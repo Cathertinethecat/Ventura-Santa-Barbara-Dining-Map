@@ -1,1 +1,493 @@
-<!doctype html><html><head><meta charset="utf-8"><title>Ventura and Santa Barbara Dining Map</title><style>body{font-family:"Times New Roman",Times,serif;margin:40px;color:#1f2a3a}</style></head><body><h1>Ventura and Santa Barbara Dining Map</h1><p>Map under construction. Check back shortly.</p></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ventura and Santa Barbara Dining Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+<script src="https://unpkg.com/leaflet.gridlayer.googlemutant@0.14.1/dist/Leaflet.GoogleMutant.js"></script>
+<script>const GKEY="AIzaSyBv-3fjCEu5UzXlyiA2OGjzyUl3tprLpxY";window.gmReady=function(){window._gmLoaded=true;if(window.onGoogleReady)window.onGoogleReady();};</script>
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBv-3fjCEu5UzXlyiA2OGjzyUl3tprLpxY&loading=async&callback=gmReady&v=weekly"></script>
+<script src="district_stores.js?v=1792471375"></script>
+<script src="district_restaurants.js?v=1792471375"></script>
+<script src="districts.js?v=1792471375"></script>
+<script src="restaurants.js?v=1792471375"></script>
+<script src="la_transit.js?v=1792471375"></script>
+<style>
+  html,body{height:100%;margin:0;font-family:"Times New Roman",Times,serif;color:#1d1c19;background:#111}
+  #map{position:absolute;inset:0}
+  .panel{position:absolute;left:10px;bottom:28px;z-index:600;background:rgba(255,255,255,.94);border-radius:4px;padding:8px 12px;max-width:min(320px,calc(100vw - 20px));box-shadow:0 1px 6px rgba(0,0,0,.35)}
+  .panel h1{font-size:1.05rem;margin:0;line-height:1.2;cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center}
+  .panel h1 small{font-size:.8rem;color:#5f5b50;font-weight:400}
+  .panel .body{display:none;margin-top:6px;max-height:60vh;overflow:auto}
+  .panel.open .body{display:block}
+  .leaflet-popup-pane{z-index:1200}
+  .leaflet-popup{margin-bottom:28px}
+  .panel p{margin:0;font-size:.85rem;color:#5f5b50}
+  .panel .btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .panel button,.panel label{font:inherit;font-size:.85rem;border:1px solid #c9c3b2;background:#fff;border-radius:3px;padding:4px 8px;cursor:pointer}
+  .leaflet-popup-content{font-family:"Times New Roman",Times,serif;font-size:15px;line-height:1.4;margin:12px 14px}
+  .leaflet-popup-content h2{font-size:1.1rem;margin:0 0 2px}
+  .leaflet-popup-content h2 a{color:#1f4e79}
+  .hphoto{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:3px;margin:0 0 8px;background:#efece2}
+  .leaflet-popup-content .addr{color:#5f5b50;font-size:.9rem;margin:0 0 8px}
+  .kv{display:flex;gap:8px;margin:0 0 8px}
+  .kv div{background:#efece2;border-radius:3px;padding:5px 8px;flex:1}
+  .kv b{display:block;font-size:1.3rem;line-height:1.1}
+  .kv span{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:#5f5b50}
+  .seas{border-top:1px solid #c9c3b2;padding-top:6px;margin:0;font-size:.9rem}
+  .seas i{display:block;margin-bottom:2px}
+  .note{font-size:.78rem;color:#5f5b50;margin:6px 0 0}
+  .sch{margin:4px 0 0;font-size:.82rem}.sch summary{cursor:pointer;color:#1f4e79}.sch div{max-height:150px;overflow:auto;margin-top:4px;line-height:1.35}.sch span{display:block}
+  .rt{width:100%;border-collapse:collapse;font-size:.88rem;margin:2px 0 4px}
+  .rt td{padding:2px 0;border-bottom:1px solid #efece2}
+  #tierToggles label,#cityToggles label{display:block;width:100%;border:none;padding:2px 0;background:none}
+  .badge{display:inline-block;font-size:.75rem;background:#1f4e79;color:#fff;border-radius:3px;padding:2px 7px;margin:0 0 8px}
+  .badge.off{background:#efece2;color:#5f5b50;border:1px solid #c9c3b2}
+  .mk{background:#b3412f;color:#fff;border:1.5px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 11px "Times New Roman",Times,serif;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+  .mk.plan{background:#fff;color:#b3412f;border:1.5px dashed #b3412f}
+  .vm{width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid #d4a017;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+  .wvm{width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid #6a3fb5;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+  .wvm::after{content:'';position:absolute;inset:5px;border-radius:50%;background:#6a3fb5}
+  .sem{width:22px;height:22px;border-radius:4px;background:#fff;border:3px solid #2f7d4e;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+  .sem::after{content:'';position:absolute;inset:5px;border-radius:2px;background:#2f7d4e}
+  .splan{display:block;width:100%;height:auto;border-radius:3px;margin:0 0 8px;background:#efece2}
+  .vm::after{content:'';position:absolute;inset:5px;border-radius:50%;background:#d4a017}
+  .vm.cD{border-color:#b0b0b0}.vm.cD::after{background:#b0b0b0}.vm.cU{border-color:#fff;border-style:dashed}.vm.cU::after{background:#fff}
+  #venueToggles label{display:block;width:100%;border:none;padding:2px 0;background:none}
+  .lm{background:rgba(31,78,121,.9);color:#fff;border-radius:3px;padding:2px 6px;font:italic 11px "Times New Roman",Times,serif;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+  @media (max-width:600px), (pointer:coarse) and (max-width:900px){
+    .panel{left:6px;right:6px;bottom:22px;max-width:none;padding:6px 10px}
+    .panel h1{font-size:.95rem}
+    .panel h1 small{font-size:.72rem}
+    .panel .body{max-height:42vh;margin-top:4px}
+    .panel p{font-size:.78rem}
+    .panel button,.panel label{font-size:.78rem;padding:3px 7px}
+    .panel .btns{gap:4px;margin-top:6px}
+    #tierToggles label,#connToggles label,#cityToggles label,.oc label,#venueToggles label{width:calc(50% - 4px);padding:1px 0}
+    #tierToggles label[style],#cityToggles label[style],.oc label[style],#otherToggles>label,#venueToggles label[style],#connToggles b{width:100%}
+    .leaflet-popup-content{font-size:13.5px;margin:10px 12px}
+    .leaflet-popup-content h2{font-size:1rem}
+    .kv b{font-size:1.1rem}
+    .seas,.rt{font-size:.82rem}
+    .note{font-size:.72rem}
+    .lm{font-size:10px;padding:1px 4px}
+  }
+  .secbtn{font:inherit;font-size:.9rem;border:none;background:none;padding:0 6px 0 0;cursor:pointer;color:#1f4e79;line-height:1}
+  .grp{display:none;width:100%}
+  .oc{width:100%;margin-top:2px}
+  .oc label{display:inline-block;width:calc(50% - 4px);border:none;padding:2px 0;background:none}.oc label[style]{width:100%}
+  .mk.oth{border:1.5px solid #fff;outline:1.5px dashed #1d1c19}
+  .cdot{position:relative}.cdot .mk{position:absolute;left:50%;top:0;transform:translateX(-50%);cursor:pointer}.cdot .ct{position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(31,78,121,.92);color:#fff;border-radius:3px;padding:1px 6px;font:italic 11px "Times New Roman",Times,serif;box-shadow:0 1px 3px rgba(0,0,0,.5);cursor:pointer}
+.dpill{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.96);border:2px solid var(--c);border-radius:14px;padding:2px 9px 2px 6px;font:italic 12px "Times New Roman",Times,serif;color:#1f2a3a;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.45);cursor:pointer}.dpill b{display:inline-block;width:16px;height:16px;border-radius:50%;background:var(--c);color:#fff;font:bold 10px/16px "Times New Roman",Times,serif;text-align:center;font-style:normal}
+.dlist{width:100%;font-size:.78rem;line-height:1.5;color:#1f4e79;columns:2;column-gap:8px;margin:2px 0 4px}.dlist a{display:block;text-decoration:none;color:#1f4e79;cursor:pointer;break-inside:avoid}.dlist a:hover{text-decoration:underline}
+.rpanel{position:absolute;top:10px;right:10px;bottom:10px;width:min(340px,calc(100% - 20px));background:rgba(250,248,242,.97);border:1px solid #c9c3b3;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.35);z-index:1200;display:none;flex-direction:column;font-family:"Times New Roman",Times,serif}
+  .rpanel.open{display:flex}.rpanel .rh{padding:8px 10px 6px;border-bottom:1px solid #d8d3c5}.rpanel .rh h2{margin:0 24px 2px 0;font-size:1rem;color:#1f2a3a}.rpanel .rh .sub{color:#5f5b50;font-size:.8rem}
+  .rpanel .rx{position:absolute;top:6px;right:8px;border:none;background:none;font-size:1.2rem;cursor:pointer;color:#5f5b50}
+  .rpanel .rsort{display:flex;gap:4px;padding:6px 10px;border-bottom:1px solid #d8d3c5;flex-wrap:wrap}.rpanel .rsort button{font:inherit;font-size:.78rem;padding:2px 8px;border:1px solid #c9c3b3;background:#fff;border-radius:3px;cursor:pointer}.rpanel .rsort button.on{background:#1f4e79;color:#fff;border-color:#1f4e79}
+  .rpanel .rl{overflow:auto;flex:1;padding:4px 0}.rpanel .rl a{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:5px 10px;text-decoration:none;color:#1f2a3a;border-bottom:1px solid #ebe7db;cursor:pointer}.rpanel .rl a:hover{background:#f1ede2}.rpanel .rl .nm{font-weight:700;color:#1f4e79}.rpanel .rl .cu{color:#5f5b50;font-size:.78rem;grid-column:1}.rpanel .rl .rt{text-align:right;font-size:.85rem;white-space:nowrap}.rpanel .rl .rt small{color:#5f5b50}
+  @media (max-width:700px){.rpanel{top:auto;height:60%;left:10px;right:10px;width:auto}}
+  .cgather{background:rgba(255,255,255,.95);color:#1f4e79;border:1px solid #1f4e79;border-radius:3px;padding:1px 6px;font:11px "Times New Roman",Times,serif;white-space:nowrap;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+  .grp.open{display:flex;flex-wrap:wrap;gap:4px}
+  .btns>label.sechead{display:flex;align-items:center;width:100%;border:none;background:none;padding:2px 0}
+  .bib{margin:4px 0 0;padding:0 0 0 1.6em;font-size:.74rem;color:#5f5b50;line-height:1.35}
+  .bib li{margin:0 0 4px}
+  .bib i{font-style:italic}
+  .bib a{color:#1f4e79;word-break:break-all}
+  .cite{color:#1f4e79;text-decoration:none;font-size:.9em}
+  details.seas{margin:6px 0 0;padding:0}details.seas>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;font-style:italic;color:#5f5b50;font-size:.85rem;padding:5px 0 3px;border-top:1px solid #d8d3c5}details.seas>summary::-webkit-details-marker{display:none}details.seas>summary::before{content:'\25B8';font-style:normal;font-size:.8rem;color:#1f4e79}details[open].seas>summary::before{content:'\25BE'}details.seas>summary>i{font-style:italic}details.seas>.sb{padding:0 0 4px}
+  .foldbar{display:flex;gap:6px;justify-content:flex-end;margin:4px 0 0}.foldbar button{font:inherit;font-size:.72rem;padding:1px 7px;border:1px solid #c9c3b3;background:#fff;border-radius:3px;cursor:pointer;color:#1f4e79}
+  .leaflet-popup-content{max-height:70vh;overflow:auto;-webkit-overflow-scrolling:touch}
+  @media (max-width:700px){.leaflet-popup-content{max-height:55vh;max-width:min(300px,calc(100vw - 50px))!important}.hphoto{aspect-ratio:21/9}.leaflet-popup{margin-bottom:28px}}
+  .bib.dp{list-style:disc;padding-left:16px;margin:0 0 4px}.bib.dp li{margin:0 0 4px;font-size:.78rem;line-height:1.35}
+  .astamp{margin:8px 0 0;padding-top:6px;border-top:1px solid #d8d3c5;font-size:.72rem;color:#5f5b50}.astamp a{color:#1f4e79;cursor:pointer;text-decoration:underline}.astamp .ax{display:none;margin-top:4px;line-height:1.4}.astamp.open .ax{display:block}
+  .kpanel{position:absolute;top:10px;right:10px;max-height:calc(100% - 20px);width:min(360px,calc(100% - 20px));background:rgba(250,248,242,.97);border:1px solid #c9c3b3;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.35);z-index:1200;display:none;flex-direction:column;font-family:"Times New Roman",Times,serif}
+  .kpanel.open{display:flex}.kpanel .kh{padding:8px 10px 6px;border-bottom:1px solid #d8d3c5}.kpanel .kh h2{margin:0 24px 2px 0;font-size:1rem;color:#1f2a3a}
+  .kpanel .kx{position:absolute;top:6px;right:8px;border:none;background:none;font-size:1.2rem;cursor:pointer;color:#5f5b50}
+  .kpanel .kb{overflow:auto;flex:1;padding:8px 12px;font-size:.82rem;line-height:1.5;color:#1f2a3a}.kpanel .kb .btns{display:block}
+  .kpanel .kz button{font:inherit;font-size:.85rem;width:30px;padding:2px 0;border:1px solid #c9c3b3;background:#fff;border-radius:3px;cursor:pointer}
+  @media (max-width:700px){.kpanel{top:auto;bottom:10px;max-height:70%;left:10px;right:10px;width:auto}}
+  .kpanel .khint{font-size:.9em;color:#5f5b50;font-style:italic;margin:2px 0 8px}
+  .kpanel .ks{border:1px solid #d8d3c5;border-radius:5px;background:#fff;padding:6px 10px 4px;margin-bottom:8px}
+  .kpanel .kst{font-weight:700;font-size:1.05em;color:#1f2a3a;margin-bottom:2px}.kpanel .ksn{font-size:.9em;color:#5f5b50;margin-bottom:4px}
+  .kpanel .kr{display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid #efece3}.kpanel .ksn+.kr,.kpanel .kst+.kr{border-top:none}
+  .kpanel .ksw{flex:0 0 34px;text-align:center;line-height:1}.kpanel .kl{flex:1}
+  .term{border-bottom:1px dotted #1f4e79;cursor:help}.termnote{display:block;font-size:.78rem;color:#5f5b50;background:#f6f3ea;border:1px solid #d8d3c5;border-radius:3px;padding:4px 6px;margin:3px 0}
+  .kpanel .kinfo{border-bottom:1px dotted #1f4e79;cursor:help}.kpanel .kdef{display:block;font-size:.92em;color:#5f5b50;background:#f6f3ea;border:1px solid #d8d3c5;border-radius:3px;padding:3px 6px;margin-top:3px}
+  .kpanel .kst{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px}.kpanel .kst::before{content:"\25BE";font-size:.8em;color:#5f5b50;width:10px}
+  .kpanel .ks.closed .kst::before{content:"\25B8"}.kpanel .ks.closed .kst{margin-bottom:0}.kpanel .ks.closed .ksn,.kpanel .ks.closed .kr{display:none}
+  .kpanel .kall{font-size:.85em;color:#1f4e79;text-decoration:underline;cursor:pointer;margin-left:8px}
+  .kpanel .kmin{right:30px;font-size:1.1rem}.kpanel.min .kb,.kpanel.min .kh .btns{display:none}.kpanel.min .kh{border-bottom:none;cursor:pointer}.kpanel.min .kmin::before{content:"\25BE"}.kpanel.min .kmin{font-size:.9rem}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="rpanel" id="rpanel"><div class="rh"><h2 id="rpTitle"></h2><div class="sub" id="rpSub"></div><button class="rx" id="rpClose" aria-label="close">&times;</button><div class="btns" style="margin-top:6px"><button type="button" id="rpBack">&#8592; Back to legend</button><button type="button" id="rpDistCard">District card</button><button type="button" id="rpRetry" style="display:none">Retry missing ratings</button></div></div><div class="rsort" id="rpMode" style="display:none"><span style="font-size:.78rem;color:#5f5b50;align-self:center">Show:</span><button data-rm="rest" class="on">Restaurants</button><button data-rm="stores">Stores</button></div><div class="rsort" id="rpSortRest"><span style="font-size:.78rem;color:#5f5b50;align-self:center">Sort:</span><button data-rs="rt" class="on">Rating</button><button data-rs="cu">Cuisine</button><button data-rs="az">A to Z</button><button data-rs="p">Price</button></div><div class="rsort" id="rpSortStores" style="display:none"><span style="font-size:.78rem;color:#5f5b50;align-self:center">Sort:</span><button data-ss="tier" class="on">Tier</button><button data-ss="cat">Category</button><button data-ss="az">A to Z</button></div><div class="rl" id="rpList"></div></div>
+<div class="kpanel" id="kpanel"><div class="kh"><h2>Map key</h2><button class="kx kmin" id="kpMin" aria-label="minimize" title="Shrink to title bar">&#8211;</button><button class="kx" id="kpClose" aria-label="close">&times;</button><div class="btns" style="margin-top:6px;align-items:center"><button type="button" id="kpBack">&#8592; Back to legend</button><span class="kz" style="margin-left:6px"><span style="font-size:.78rem;color:#5f5b50">Text size</span> <button type="button" id="kpMinus" aria-label="smaller">&minus;</button><button type="button" id="kpPlus" aria-label="larger">+</button></span></div></div><div class="kb" id="kpBody">
+<div class="khint">Tap a section title to open or close it. Hover over or tap an underlined item for its definition.<span class="kall" id="kpAll">Collapse all</span></div><div class="ks"><div class="kst">Dining districts</div><div class="ksn">Pin and outline color by kind of district.</div><div class="kr"><span class="ksw"><span style="color:#1e88e5;font-weight:700;font-size:1.2em">&#9832;</span></span><div class="kl"><span class="kinfo" data-def="Older main-street districts such as State Street, downtown Ventura and downtown Ojai." title="Older main-street districts such as State Street, downtown Ventura and downtown Ojai.">Historic downtown</span></div></div><div class="kr"><span class="ksw"><span style="color:#ec407a;font-weight:700;font-size:1.2em">&#9832;</span></span><div class="kl"><span class="kinfo" data-def="Open-air shopping and dining centers such as The Collection at RiverPark and the Malibu Country Mart." title="Open-air shopping and dining centers such as The Collection at RiverPark and the Malibu Country Mart.">Lifestyle center</span></div></div><div class="kr"><span class="ksw"><span style="color:#00c9a7;font-weight:700;font-size:1.2em">&#9832;</span></span><div class="kl"><span class="kinfo" data-def="Shared-hall dining with many vendors." title="Shared-hall dining with many vendors.">Food hall</span></div></div><div class="kr"><span class="ksw"><span style="color:#212121;font-weight:700;font-size:1.2em">&#9832;</span></span><div class="kl"><span class="kinfo" data-def="Malls and large retail centers such as The Oaks in Thousand Oaks." title="Malls and large retail centers such as The Oaks in Thousand Oaks.">Regional center</span></div></div></div><div class="ks"><div class="kst">Restaurants</div><div class="ksn">Marker color is the tier; the number in the circle is the Google rating.</div><div class="kr"><span class="ksw"><span style="color:#6b1f7a;font-size:1.3em">&#9679;</span></span><div class="kl"><span class="kinfo" data-def="Michelin, James Beard or similar recognition." title="Michelin, James Beard or similar recognition.">Award-recognized</span></div></div><div class="kr"><span class="ksw"><span style="color:#b3412f;font-size:1.3em">&#9679;</span></span><div class="kl">Fine dining $$$$</div></div><div class="kr"><span class="ksw"><span style="color:#c98a1c;font-size:1.3em">&#9679;</span></span><div class="kl">Upscale $$$</div></div><div class="kr"><span class="ksw"><span style="color:#2f7d4e;font-size:1.3em">&#9679;</span></span><div class="kl">Mid-range $$</div></div></div><div class="ks"><div class="kst">Marker styles</div><div class="kr"><span class="ksw"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#c98a1c;vertical-align:middle"></span> <span style="display:inline-block;width:15px;height:15px;border-radius:50%;background:#c98a1c;vertical-align:middle"></span></span><div class="kl">Bigger marker = more reviews</div></div><div class="kr"><span class="ksw"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;border:2px dashed #c98a1c"></span></span><div class="kl"><span class="kinfo" data-def="Restaurant outside the City of Oxnard." title="Restaurant outside the City of Oxnard.">Dashed outline</span></div></div><div class="kr"><span class="ksw"><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:#c98a1c;color:#fff;font-size:9px;line-height:16px;text-align:center">12</span></span><div class="kl"><span class="kinfo" data-def="Number of restaurants shown in that city. Tap to spread them out." title="Number of restaurants shown in that city. Tap to spread them out.">City dot</span></div></div><div class="kr"><span class="ksw"><span style="color:#9e9e9e;font-weight:700">4.8</span></span><div class="kl"><span class="kinfo" data-def="Fewer than 20 reviews, so the rating is less reliable." title="Fewer than 20 reviews, so the rating is less reliable.">Grey rating</span></div></div></div><div class="ks"><div class="kst">Basemap and boundaries</div><div class="ksn">Google Maps, satellite or street view.</div><div class="kr"><span class="ksw"><span style="color:#FFD600;font-weight:700;font-size:1.2em">&#9644;</span></span><div class="kl"><span class="kinfo" data-def="One color per city." title="One color per city.">City limits</span></div></div><div class="kr"><span class="ksw"><span style="color:#9e9e9e;font-weight:700;font-size:1.2em">&#9638;</span></span><div class="kl">Unincorporated county land</div></div></div>
+</div></div>
+<div class="panel" id="panel">
+  <h1 id="ptog">Legend <small id="pind">tap for legend &amp; controls</small></h1>
+  <div class="body">
+  <div class="btns" id="keyOpenRow" style="margin:0 0 6px"><button type="button" id="keyOpen">Open map key</button></div>
+  <ul class="bib dp" style="margin:0 0 6px">
+    <li>Upscale and award-recognized restaurants along the coast from Santa Barbara to Malibu, with Ojai, Camarillo and the Conejo Valley, anchored on downtown Oxnard. Open a card and its Google rating loads live.</li>
+    <li>Restaurant layers start off. Turn on Oxnard restaurants or a county below to show them.</li>
+    <li>Dining districts are the walkable clusters a visitor would head to for dinner. Tap a pin for the district card and its full restaurant list.</li>
+    <li>Tap any marker for details. See the map key at the bottom for colors and sizes.</li>
+  </ul>
+  <div class="btns"><b style="font-size:.85rem;width:100%">Zoom to area</b>
+    <button id="bCity">Oxnard</button>
+    <button id="bLA">Whole coast</button>
+    <button id="bSB">Santa Barbara</button><button id="bMal">Malibu</button>
+  </div>
+  <div class="btns"><b style="font-size:.85rem;width:100%">Minimum Google rating</b>
+    <label><input type="radio" name="minrt" value="4.5" checked> 4.5 and up</label>
+    <label><input type="radio" name="minrt" value="4.3"> 4.3 and up</label>
+    <label><input type="radio" name="minrt" value="4.0"> 4.0 and up</label>
+    <label><input type="radio" name="minrt" value="0"> All listed</label>
+    <span style="width:100%;color:#5f5b50;font-size:.8rem">Award-recognized restaurants always show. Restaurants with no rating found show only under "All listed".</span>
+  </div>
+  <div class="btns">
+    <label><input type="checkbox" id="sat" checked> Satellite</label>
+    <div style="width:100%;font-size:.78rem;margin-top:2px"><a href="#" id="gcheck">Check Google connection</a><div id="gcheckOut" style="color:#5f5b50;white-space:pre-wrap"></div></div>
+  </div>
+  <div class="btns" id="tierToggles"><label style="width:100%;padding:2px 0"><input type="checkbox" id="tAllHotels" checked> <b style="font-size:.85rem">Oxnard restaurants</b> <span style="color:#5f5b50">(all tiers on/off)</span></label>
+    <label><input type="checkbox" data-tier="award" checked> <span style="color:#6b1f7a">&#9679;</span> Award-recognized</label>
+    <label><input type="checkbox" data-tier="fine" checked> <span style="color:#b3412f">&#9679;</span> Fine dining ($$$$)</label>
+    <label><input type="checkbox" data-tier="upscale" checked> <span style="color:#c98a1c">&#9679;</span> Upscale ($$$)</label>
+    <label><input type="checkbox" data-tier="mid" checked> <span style="color:#2f7d4e">&#9679;</span> Mid-range, top rated ($$)</label>
+    <div class="btns" style="margin-top:4px;width:100%"><button type="button" id="onExpand">Spread Oxnard</button><button type="button" id="onCollapse">Gather Oxnard</button></div>
+  </div>
+  <div class="btns" id="otherToggles"><label style="width:100%;padding:2px 0"><input type="checkbox" id="tAllOther" checked> <b style="font-size:.85rem">Other cities' restaurants</b> <span style="color:#5f5b50">(by county, nearest first)</span></label>
+    <div class="btns" style="margin-top:4px;width:100%"><button type="button" id="ocExpand">Spread all</button><button type="button" id="ocCollapse">Gather all</button></div>
+    <div style="width:100%;color:#5f5b50;font-size:.8rem;margin-top:4px">Tier filter for all other cities</div>
+    <label><input type="checkbox" data-otier="award" checked> <span style="color:#6b1f7a">&#9679;</span> Award-recognized</label>
+    <label><input type="checkbox" data-otier="fine" checked> <span style="color:#b3412f">&#9679;</span> Fine dining</label>
+    <label><input type="checkbox" data-otier="upscale" checked> <span style="color:#c98a1c">&#9679;</span> Upscale</label>
+    <label><input type="checkbox" data-otier="mid" checked> <span style="color:#2f7d4e">&#9679;</span> Mid-range, top rated</label>
+    <div id="countyBox" style="width:100%"></div></div>
+  <div class="btns" id="distToggles"><label style="width:100%;padding:2px 0"><input type="checkbox" id="tAllDist" checked> <b style="font-size:.85rem">Oxnard dining districts</b> <span style="color:#5f5b50">(open one for its full restaurant list; tap a name to see it on the map)</span></label></div>
+  <div class="btns" id="distToggles2"><label style="width:100%;padding:2px 0"><input type="checkbox" id="tAllDist2" checked> <b style="font-size:.85rem">Other cities' dining districts</b> <span style="color:#5f5b50">(nearest first; open one for its full restaurant list)</span></label></div>
+  <div class="btns">
+    <label style="width:100%;padding:2px 0;border:none;background:none"><input type="checkbox" id="tAllOverlays"> <b style="font-size:.85rem">Transit</b> <span style="color:#5f5b50">(Metrolink Ventura County Line; Amtrak Pacific Surfliner shares the same tracks to Santa Barbara)</span></label>
+    <label><input type="checkbox" id="tRail"> Metro rail</label>
+    <label><input type="checkbox" id="tML"> Metrolink</label>
+  </div>
+  <div class="btns" id="venueToggles" style="display:none"><label style="width:100%;padding:2px 0"><input type="checkbox" id="tLA28"> <b style="font-size:.85rem">LA28 venues</b> <span style="color:#5f5b50">(filter by spectator capacity; tap a venue for its card)</span></label>
+    <label><input type="checkbox" data-vt="A"> <span style="color:#d4a017;font-size:1.2em">&#9673;</span> 50,000 and up</label>
+    <label><input type="checkbox" data-vt="B"> <span style="color:#d4a017">&#9673;</span> 15,000 to 49,999</label>
+    <label><input type="checkbox" data-vt="C"> <span style="color:#d4a017;font-size:.85em">&#9673;</span> 5,000 to 14,999</label>
+    <label><input type="checkbox" data-vt="D"> <span style="color:#9e9e9e;font-size:.85em">&#9673;</span> Under 5,000</label>
+    <label><input type="checkbox" data-vt="U"> <span style="color:#777;font-size:.85em">&#9711;</span> Not yet published</label></div>
+  <div class="btns" id="cityToggles"><label style="width:100%;padding:2px 0"><input type="checkbox" id="tAllCity" checked> <b style="font-size:.85rem">City limits</b> <span style="color:#5f5b50">(all on/off)</span></label></div>
+  <p class="note"><a href="#" id="aboutTog">About the data</a></p>
+  <div id="about" style="display:none">
+    <p class="note" style="margin:6px 0 2px"><b>Restaurants (93 on the main layers).</b></p>
+    <ul class="bib dp">
+      <li>Award-recognized restaurants (Michelin Guide stars, Bib Gourmands and recommendations; Wine Spectator Restaurant Awards) across the coast from Santa Barbara to Malibu, plus the $$$$ and $$$ restaurants and the top-rated $$ sit-down restaurants (4.5 or higher with 300+ reviews) found in Santa Barbara, Montecito, Carpinteria, Ojai, Ventura, Santa Paula, Oxnard, Camarillo, the Conejo Valley, Calabasas, Malibu and Topanga, from the Michelin Guide, Wine Spectator, OpenTable, TripAdvisor, Wanderlog, Restaurantji and local press, October 19, 2026 <a href="#vref1" class="cite">[1]</a> <a href="#vref2" class="cite">[2]</a> <a href="#vref3" class="cite">[3]</a>.</li>
+      <li>Price tiers come from the Michelin Guide, TripAdvisor or AAA where they publish one; where no source gave a price, the tier is inferred from the kind of restaurant and the card's note says so. OpenTable's price tags were not used because they show the top tier for nearly every restaurant here.</li>
+      <li>When a restaurant card opens, its rating, review count, price and current photo are fetched live from Google Places (Text Search and Place Photos) under the map owner's Google Maps Platform key; nothing from Google is stored <a href="#vref4" class="cite">[4]</a>.</li>
+      <li>Chains with more than about 20 locations are left out unless they are upscale steakhouse brands. Goleta, Fillmore, Port Hueneme, Simi Valley and Moorpark turned up no restaurant that met the tier rules with a confirmable address and position.</li>
+      <li>Positions are placed by address from published anchor points and are approximate; the research notes flag the weakest ones (Ventura side streets, Carpinteria Avenue, the Malibu PCH strip).</li>
+      <li>Link and closure check, October 19, 2026, done in the same research pass: every source link on a card was opened by the researcher, and places marked permanently or temporarily closed on their directory or Michelin page were left out.</li>
+    </ul>
+    <p class="note" style="margin:6px 0 2px"><b>Dining districts (20).</b></p>
+    <ul class="bib dp">
+      <li>Walkable restaurant clusters: historic downtowns and main streets, lifestyle centers, harbor villages and the Malibu coast-highway strips; outlines drawn around the cluster, not legal boundaries, from published coordinates and street numbering <a href="#vref5" class="cite">[5]</a>.</li>
+      <li>Drive times are typical off-peak estimates from Plaza Park in downtown Oxnard, computed from road distance where no published figure was found.</li>
+      <li>District rosters (271 restaurants) come from each district's own directory plus Wanderlog, TripAdvisor, Yelp and Michelin lists; positions are schematic along the main street. Several districts came back thinner than the research target (Downtown Oxnard, Point Dume, The Oaks, Whizin Market Square) because few of their tenants have a published address on a page that could be opened.</li>
+      <li>Store rosters (115 stores at six centers) are partial: the centers' own directories could not be opened from the research tool, so the lists come from the developers' portfolio pages, Visit Oxnard, Santa Barbara visitor pages, local press and Wikipedia. The Luxury, Premium, Mid-market and Value tiers follow standard retail positioning and were assigned by the map team <a href="#vref6" class="cite">[6]</a>.</li>
+      <li>Rail: Metrolink Ventura County Line as drawn on the Ontario maps; Amtrak Pacific Surfliner runs on the same tracks and continues to Santa Barbara and Goleta <a href="#vref7" class="cite">[7]</a>.</li>
+      <li>City limits are the State Board of Equalization city boundaries served by the California Department of Conservation, with unincorporated county land shaded <a href="#vref8" class="cite">[8]</a>.</li>
+    </ul>
+    <p class="note" style="margin:6px 0 2px"><b>References (Chicago author-date).</b></p>
+    <ol class="bib" style="padding-left:18px">
+      <li id="vref1">Michelin Guide (2026). <i>Santa Barbara, Montecito and Ojai restaurants</i>. <a href="https://guide.michelin.com/us/en/california/santa-barbara/restaurants" target="_blank" rel="noopener">guide.michelin.com</a>. Accessed October 19, 2026.</li>
+      <li id="vref2">Wine Spectator (2026). <i>Restaurant Awards</i>. <a href="https://www.winespectator.com/restaurants/search" target="_blank" rel="noopener">winespectator.com</a>. Accessed October 19, 2026.</li>
+      <li id="vref3">Wanderlog, TripAdvisor, OpenTable, Restaurantji and local press (Noozhawk, Santa Barbara Independent, VC Star, Ventura County Reporter, Malibu Times, Patch) (2025 to 2026). Restaurant lists and listings, as linked on each card. Accessed October 19, 2026.</li>
+      <li id="vref4">Google (2026). <i>Places API (New): Text Search and Place Photos</i>. <a href="https://developers.google.com/maps/documentation/places/web-service/text-search" target="_blank" rel="noopener">developers.google.com</a>. Accessed October 19, 2026.</li>
+      <li id="vref5">District directories and visitor pages (2024 to 2026): Downtown Santa Barbara, The Funk Zone, Coast Village Association, City of Carpinteria, Ojai Chamber and Visit Ojai, Downtown Ventura Partners, Ventura Harbor Village, Visit Oxnard, Channel Islands Harbor, The Collection at RiverPark, Old Town Camarillo, Caruso (The Promenade at Westlake), The Commons at Calabasas, Whizin Market Square, The Oaks, Malibu Country Mart, as linked on each district card. Accessed October 19, 2026.</li>
+      <li id="vref6">Caruso (2026), Visit Oxnard (2026), Santa Barbara Visitors (2026), Conejo Valley Guide (n.d.), Malls.com (n.d.), Wikipedia (2026). Store lists for the six centers, as linked in each store list. Accessed October 19, 2026.</li>
+      <li id="vref7">Metrolink (2026). <i>Ventura County Line</i>; Amtrak (2026). <i>Pacific Surfliner</i>. <a href="https://metrolinktrains.com/rider-info/general-info/lines/ventura-county-line/" target="_blank" rel="noopener">metrolinktrains.com</a>; <a href="https://www.pacificsurfliner.com/" target="_blank" rel="noopener">pacificsurfliner.com</a>. Accessed October 19, 2026.</li>
+      <li id="vref8">California Department of Conservation (2026). <i>Base BOE Cities and Base Counties feature services</i>. <a href="https://gis.conservation.ca.gov/server/rest/services/Base/Base_BOECities/FeatureServer" target="_blank" rel="noopener">gis.conservation.ca.gov</a>. Accessed October 19, 2026.</li>
+    </ol>
+    <p class="note" style="margin:6px 0 0">Map built with Leaflet and Turf.js on a Google Maps basemap (Esri and CARTO fallback), October 2026, for the Sunstone Economic Development Challenge at USC Price. Companion maps: <a href="https://cathertinethecat.github.io/Ontario-Dining-Map/" target="_blank" rel="noopener">Ontario Dining Map</a>, <a href="https://cathertinethecat.github.io/Ontario-Hotel-Map/" target="_blank" rel="noopener">Ontario Hotel Map</a>.</p>
+  </div>
+  </div>
+</div>
+<script>
+const CAT={award:{c:'#6b1f7a',l:'Award-recognized'},fine:{c:'#b3412f',l:'Fine dining ($$$$)'},upscale:{c:'#c98a1c',l:'Upscale ($$$)'},mid:{c:'#2f7d4e',l:'Mid-range, top rated ($$)'}};
+const LM=[["Plaza Park, downtown Oxnard",34.1975,-119.1771],["Oxnard Transit Center (Amtrak, Metrolink)",34.1990,-119.1720],["Channel Islands Harbor",34.1640,-119.2230],["The Collection at RiverPark",34.2410,-119.1770],["Ventura County Government Center",34.2743,-119.2250]];
+const panel=document.getElementById('panel');
+document.getElementById('aboutTog').onclick=e=>{e.preventDefault();const a=document.getElementById('about');a.style.display=a.style.display==='none'?'block':'none';};
+document.getElementById('ptog').onclick=()=>{panel.classList.toggle('open');document.getElementById('pind').textContent=panel.classList.contains('open')?'tap to hide':'tap for legend & controls';};
+const map=L.map('map',{zoomControl:true}).setView([34.25,-119.25],10);
+map.on('popupopen',()=>{panel.classList.remove('open');document.getElementById('pind').textContent='tap for legend & controls';});
+const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imagery &copy; Esri, Maxar, Earthstar Geographics'});
+const lab=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19});
+const streets=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors &copy; CARTO'});
+const satGroup=L.layerGroup([sat,lab]).addTo(map);
+let gSat=null,gRoad=null,useGoogle=false;
+function currentBase(){return document.getElementById('sat').checked?(useGoogle?gSat:satGroup):(useGoogle?gRoad:streets);}
+function setBase(){[satGroup,streets,gSat,gRoad].forEach(l=>{if(l&&map.hasLayer(l))map.removeLayer(l);});currentBase().addTo(map);}
+document.getElementById('sat').onchange=setBase;
+function revertBase(why){if(!useGoogle)return;useGoogle=false;console.warn('Google basemap unavailable ('+why+'); using Esri/CARTO instead');setBase();}
+window.gm_authFailure=function(){revertBase('auth');};
+window.onGoogleReady=function(){try{if(!L.gridLayer.googleMutant||!window.google||!google.maps)return;
+ gSat=L.gridLayer.googleMutant({type:'hybrid',maxZoom:20});gRoad=L.gridLayer.googleMutant({type:'roadmap',maxZoom:20});
+ let ok=false;const arm=l=>l.on('spawned',e=>{try{google.maps.event.addListenerOnce(e.mapObject,'tilesloaded',()=>{ok=true;});}catch(_){}});arm(gSat);arm(gRoad);
+ useGoogle=true;setBase();setTimeout(()=>{if(!ok)revertBase('no tiles after 8 s');},8000);
+}catch(e){console.warn('Google basemap unavailable',e);revertBase('error');}};
+if(window._gmLoaded)window.onGoogleReady();
+/* official city limits from the CA Board of Equalization city layer, loaded live */
+const cityG=L.layerGroup().addTo(map);
+const CITY_STYLE={'Oxnard':{color:'#FFD600',weight:5},'Ventura':{color:'#FF3D00',weight:5},'Santa Barbara':{color:'#FF4FA3',weight:3,dashArray:'6 4'},'Carpinteria':{color:'#00E5FF',weight:3,dashArray:'6 4'},'Goleta':{color:'#00E676',weight:3,dashArray:'6 4'},'Ojai':{color:'#D500F9',weight:3,dashArray:'6 4'},'Port Hueneme':{color:'#AEEA00',weight:3,dashArray:'6 4'},'Camarillo':{color:'#B388FF',weight:3,dashArray:'6 4'},'Santa Paula':{color:'#82B1FF',weight:3,dashArray:'6 4'},'Fillmore':{color:'#FFAB40',weight:3,dashArray:'6 4'},'Moorpark':{color:'#18FFFF',weight:3,dashArray:'6 4'},'Simi Valley':{color:'#F8BBD0',weight:3,dashArray:'6 4'},'Thousand Oaks':{color:'#FF1493',weight:3.5,dashArray:'6 4'},'Westlake Village':{color:'#A7FFEB',weight:3,dashArray:'6 4'},'Agoura Hills':{color:'#FFE57F',weight:3,dashArray:'6 4'},'Calabasas':{color:'#FF8A80',weight:3,dashArray:'6 4'},'Hidden Hills':{color:'#80D8FF',weight:3,dashArray:'6 4'},'Malibu':{color:'#CCFF90',weight:3,dashArray:'6 4'}};
+const cityLayers={};const cityTogs=document.getElementById('cityToggles');
+Object.keys(CITY_STYLE).forEach(n=>{cityLayers[n]=L.layerGroup().addTo(cityG);const lab=document.createElement('label');lab.innerHTML=`<input type="checkbox" data-city="${n}" checked> <span style="color:${CITY_STYLE[n].color};font-weight:700;text-shadow:0 0 2px #555">${CITY_STYLE[n].dashArray?'&#9476;':'&#9644;'}</span> ${n}`;cityTogs.appendChild(lab);lab.querySelector('input').onchange=e=>{e.target.checked?cityLayers[n].addTo(cityG):cityG.removeLayer(cityLayers[n]);syncCity();};});
+const cityCbs=[...cityTogs.querySelectorAll('input[data-city]')];const cityAll=document.getElementById('tAllCity');
+function syncCity(){const k=cityCbs.filter(c=>c.checked).length;cityAll.checked=k===cityCbs.length;cityAll.indeterminate=k>0&&k<cityCbs.length;}
+/* unincorporated county land: county polygons minus every incorporated city in the map area */
+const unincG=L.layerGroup().addTo(map);const unLab=document.createElement('label');unLab.innerHTML='<input type="checkbox" id="tUninc" checked> <span style="color:#9e9e9e;font-weight:700">&#9638;</span> Unincorporated county land';cityTogs.appendChild(unLab);
+unLab.querySelector('input').onchange=e=>e.target.checked?unincG.addTo(map):map.removeLayer(unincG);
+(async()=>{try{if(!window.turf)return;const bb=[-120.00,33.95,-118.55,34.60];const q=encodeURIComponent;
+ const cities=await fetch(`https://gis.conservation.ca.gov/server/rest/services/Base/Base_BOECities/FeatureServer/0/query?where=1%3D1&geometry=${bb.join(',')}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=CITY&outSR=4326&geometryPrecision=5&f=geojson`).then(r=>r.json());
+ const counties=await fetch(`https://gis.conservation.ca.gov/server/rest/services/Base/Base_Counties/FeatureServer/0/query?where=${q("COUNTY_NAME IN ('Los Angeles','Ventura','Santa Barbara')")}&outFields=COUNTY_NAME&outSR=4326&geometryPrecision=5&f=geojson`).then(r=>r.json());
+ const box=turf.bboxPolygon(bb);
+ counties.features.forEach(cf=>{let poly=turf.bboxClip(cf,bb);if(!poly||!poly.geometry||turf.area(poly)<1)return;
+  cities.features.forEach(c=>{try{const d=turf.difference(poly,c);if(d)poly=d;}catch(e){}});
+  if(!poly)return;L.geoJSON(poly,{style:{color:'#9e9e9e',weight:1,dashArray:'3 3',fill:true,fillColor:'#9e9e9e',fillOpacity:.22}}).bindTooltip('Unincorporated '+cf.properties.COUNTY_NAME+' County',{sticky:true}).addTo(unincG);});
+}catch(e){console.warn('unincorporated layer failed',e);}})();
+cityAll.onchange=e=>{const on=e.target.checked;cityCbs.forEach(cb=>{if(cb.checked!==on){cb.checked=on;cb.onchange({target:cb});}});syncCity();};
+fetch("https://gis.conservation.ca.gov/server/rest/services/Base/Base_BOECities/FeatureServer/0/query?where=CITY%20IN%20('Oxnard','Ventura','San%20Buenaventura','Santa%20Barbara','Carpinteria','Goleta','Ojai','Port%20Hueneme','Camarillo','Santa%20Paula','Fillmore','Moorpark','Simi%20Valley','Thousand%20Oaks','Westlake%20Village','Agoura%20Hills','Calabasas','Hidden%20Hills','Malibu')&outFields=CITY&outSR=4326&f=geojson")
+ .then(r=>r.json()).then(gj=>{
+   L.geoJSON(gj,{style:f=>{if(f.properties.CITY==='San Buenaventura')f.properties.CITY='Ventura';const st=CITY_STYLE[f.properties.CITY]||{color:'#fff',weight:2,dashArray:'6 4'};return Object.assign({fill:true,fillColor:st.color,fillOpacity:.15,opacity:.95},st);},
+     onEachFeature:(f,l)=>{if(f.properties.CITY==='San Buenaventura')f.properties.CITY='Ventura';l.bindTooltip(f.properties.CITY+' city limits',{sticky:true});if(CITY_STYLE[f.properties.CITY]&&CITY_STYLE[f.properties.CITY].weight===5)l.bringToBack();}}).eachLayer(l=>{const n=l.feature.properties.CITY;(cityLayers[n]||cityG).addLayer(l);if(CITY_STYLE[n]&&CITY_STYLE[n].weight===5)l.bringToBack();const n2=n==='Industry'?'City of Industry':n;if(window.setCityCenter&&CITY_CENTER_FROM_LIMITS.includes(n2)){let c;try{c=window.turf?turf.centerOfMass(l.feature).geometry.coordinates:null;}catch(e){}const ll=c?[c[1],c[0]]:l.getBounds().getCenter();setCityCenter(n2,ll);}});
+ }).catch(()=>{L.polygon([[34.26,-119.26],[34.26,-119.12],[34.13,-119.12],[34.13,-119.26]],{color:'#FFD600',weight:3,dashArray:'6 4',fill:true,fillColor:'#FFD600',fillOpacity:.15}).addTo(cityLayers['Oxnard']);});
+
+LM.forEach(l=>L.marker([l[1],l[2]],{icon:L.divIcon({className:'',html:`<div class="lm">${l[0]}</div>`,iconAnchor:[0,0]}),interactive:false}).addTo(map));
+/* regional layers */
+const railG=L.layerGroup(), mlG=L.layerGroup(), laG=L.layerGroup(),laT={A:L.layerGroup().addTo(laG),B:L.layerGroup().addTo(laG),C:L.layerGroup().addTo(laG),D:L.layerGroup().addTo(laG),U:L.layerGroup().addTo(laG)}, stG=L.layerGroup();
+TRANSIT.metro.forEach(l=>{L.polyline(l.pts,{color:'#fff',weight:7,opacity:.7}).addTo(railG);L.polyline(l.pts,{color:l.c,weight:4}).addTo(railG).bindTooltip('Metro '+l.n,{sticky:true});});
+TRANSIT.metrolink.forEach(l=>{L.polyline(l.pts,{color:'#fff',weight:6,opacity:.6}).addTo(mlG);L.polyline(l.pts,{color:'#444',weight:3,dashArray:'8 6'}).addTo(mlG).bindTooltip(l.n,{sticky:true});});
+TRANSIT.stations.forEach(s=>L.circleMarker([s[1],s[2]],{radius:3,color:'#222',weight:1,fillColor:'#fff',fillOpacity:1}).bindTooltip(s[0]).addTo(stG));
+TRANSIT.mlStations.forEach(s=>L.circleMarker([s[1],s[2]],{radius:4,color:'#444',weight:1.5,fillColor:'#fff',fillOpacity:1}).bindTooltip('Metrolink: '+s[0]).addTo(stG));
+map.on('zoomend',()=>{const on=map.getZoom()>=12&&document.getElementById('tRail').checked;if(on&&!map.hasLayer(stG))stG.addTo(map);if(!on&&map.hasLayer(stG))map.removeLayer(stG);});
+const SCHED_URL='https://la28.org/content/dam/latwentyeight/competition-schedule-imagery/uploaded-july-29-oly-version-4-0/LA28OlympicGamesCompetitionScheduleByEventV4.0.pdf';
+function schedHTML(slug){const c=TRANSIT.schedule&&TRANSIT.schedule[slug];if(!c)return '';
+ let t=`<p class="seas"><i>Olympic competition</i>${c.range}, 2028 &middot; ${c.days} day${c.days>1?'s':''} &middot; ${c.sessions} session${c.sessions>1?'s':''}`;
+ const x=[];if(c.medal)x.push(`${c.medal} medal`);if(c.late)x.push(`${c.late} ending 22:00 or later`);if(c.nt)x.push(`${c.nt} not ticketed`);if(c.tbd)x.push(`${c.tbd} time TBD`);
+ if(x.length)t+=` (${x.join(', ')})`;
+ if(c.sports.length>1)t+='<br>'+c.sports.map(s=>`${s[0]}: ${s[1]}, ${s[2]} session${s[2]>1?'s':''}`).join('<br>');
+ t+=`<details class="sch"><summary>Session list</summary><div>${c.list.map(l=>`<span>${l[0]} &middot; ${l[1]} &middot; ${l[2]?l[2]+', ':''}${l[3]}</span>`).join('')}</div></details></p>`;return t;}
+TRANSIT.venues.forEach(v=>{const u='https://la28.org/en/games-plan/venues/'+v[0]+'.html';const cp=(TRANSIT.cap&&TRANSIT.cap[v[0]])||[null,'U',''];const sz=22;L.marker([v[3],v[4]],{icon:L.divIcon({className:'',html:`<div class="vm c${cp[1]}" style="position:relative"></div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],popupAnchor:[0,-sz/2]}),zIndexOffset:650}).addTo(laT[cp[1]]).bindPopup(`<h2><a href="${u}" target="_blank" rel="noopener">${v[1]}</a></h2><p class="addr">${v[2]}. LA28 venue.<br><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v[1]+', '+v[2].replace(' Zone','')+', California')}" target="_blank" rel="noopener">Open in Google Maps</a></p><div class="kv"><div><b>${cp[0]?cp[0].toLocaleString():'TBD'}</b><span>spectator capacity${cp[2]?', '+cp[2]:''}</span></div></div><p class="seas"><i>Olympic</i>${v[5]||'None listed'}</p>${v[6]?`<p class="seas"><i>Paralympic</i>${v[6]}</p>`:''}${schedHTML(v[0])}<p class="seas"><i>Source</i><a href="${u}" target="_blank" rel="noopener">LA28 venue page</a> &middot; <a href="https://la28.org/en/games-plan/venues.html" target="_blank" rel="noopener">LA28 venues plan</a> &middot; <a href="${SCHED_URL}" target="_blank" rel="noopener">LA28 competition schedule v4.0</a> &middot; <a href="https://en.wikipedia.org/wiki/Venues_of_the_2028_Summer_Olympics_and_Paralympics" target="_blank" rel="noopener">Capacity: Wikipedia, LA28 venues</a></p><p class="note">Sports as listed by LA28; marker placed at the venue site, approximate. Olympic dates and sessions from LA28's competition schedule by event, version 4.0 (July 29, 2026), subject to change; Paralympic schedule not yet published. LA28 publishes no capacities or attendance figures; the capacity shown is the operator or reported Games figure as compiled on Wikipedia (Oct 2026) and is a proxy, not an LA28 number.</p>`,{maxWidth:300});});
+const tog=(id,g)=>document.getElementById(id).onchange=e=>{e.target.checked?g.addTo(map):map.removeLayer(g);if(id==='tRail'&&!e.target.checked)map.removeLayer(stG);};
+tog('tRail',railG);tog('tML',mlG);
+const vtCbs=[...document.querySelectorAll('#venueToggles input[data-vt]')];const vtAll=document.getElementById('tLA28');
+function syncVt(){const n=vtCbs.filter(c=>c.checked).length;vtAll.checked=n===vtCbs.length;vtAll.indeterminate=n>0&&n<vtCbs.length;}
+vtCbs.forEach(cb=>cb.onchange=e=>{const g=laT[cb.dataset.vt];e.target.checked?g.addTo(laG):laG.removeLayer(g);syncVt();});
+vtAll.onchange=e=>{const on=e.target.checked;vtCbs.forEach(cb=>{cb.checked=on;const g=laT[cb.dataset.vt];on?g.addTo(laG):laG.removeLayer(g);});syncVt();};
+const ovCbs=['tRail','tML'].map(id=>document.getElementById(id));const ovAll=document.getElementById('tAllOverlays');
+function syncOv(){const n=ovCbs.filter(c=>c.checked).length;ovAll.checked=n===ovCbs.length;ovAll.indeterminate=n>0&&n<ovCbs.length;}
+ovCbs.forEach(cb=>cb.addEventListener('change',syncOv));
+ovAll.onchange=e=>{const on=e.target.checked;ovCbs.forEach(cb=>{if(cb.checked!==on){cb.checked=on;cb.onchange({target:cb});}});syncOv();};
+document.getElementById('bLA').onclick=()=>map.fitBounds([[33.95,-119.95],[34.55,-118.55]]);
+document.getElementById('bSB').onclick=()=>map.fitBounds([[34.38,-119.78],[34.46,-119.62]]);document.getElementById('bMal').onclick=()=>map.fitBounds([[33.99,-118.95],[34.08,-118.62]]);
+document.getElementById('bCity').onclick=()=>map.fitBounds([[34.13,-119.26],[34.26,-119.12]]);
+/* dining districts */
+const distG=L.layerGroup().addTo(map);const distTogs=document.getElementById('distToggles');const distTogs2=document.getElementById('distToggles2');const distMi=d=>parseFloat((d.ont||'99').split(' ')[0])||99;const DKIND={'Historic downtown':'#1e88e5','Lifestyle center':'#ec407a','Food hall':'#00c9a7','Regional center':'#212121','Harbor village':'#1565c0','Beach town strip':'#f57c00'};
+const DLIST_RENDER={};const LIVE_DONE={};let LIVE_PROG={};
+const distLayers={};DISTRICTS.slice().sort((x,y)=>distMi(x)-distMi(y)).forEach(d=>{const col=DKIND[d.kind]||'#777';const grp=L.layerGroup();
+ const poly=L.polygon(d.poly,{color:col,weight:2.5,dashArray:'4 3',fill:true,fillColor:col,fillOpacity:.22}).addTo(grp);
+ const ctr=poly.getBounds().getCenter();const q=encodeURIComponent(d.n.split(' (')[0]+', '+d.c+', CA');
+ const nOn=()=>R.filter(x=>inDist(x)===d.n&&passes(x)).length;
+ const card=()=>`${d.img?`<img class="hphoto" src="${d.img}" alt="" loading="lazy" onerror="this.style.display='none'">`:''}<h2><a href="${d.web}" target="_blank" rel="noopener">${d.n}</a></h2><p class="addr">${d.c}. ${d.kind}.</p><p class="addr" style="line-height:1.7"><a href="${d.web}" target="_blank" rel="noopener">District site</a>${d.dir?` &middot; <a href="${d.dir}" target="_blank" rel="noopener">Restaurant directory</a>`:''} &middot; <a href="${d.city}" target="_blank" rel="noopener">${d.cityl}</a> &middot; <a href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">Google Maps</a> &middot; <a href="https://www.google.com/maps/dir/?api=1&destination=${q}" target="_blank" rel="noopener">Directions</a>${d.ig?` &middot; <a href="${d.ig}" target="_blank" rel="noopener">Instagram</a>`:''}</p><div class="kv"><div style="cursor:pointer" onclick="openRoster(${JSON.stringify(d.n).replace(/"/g,'&quot;')})" title="Open the full list"><b style="color:#1f4e79;text-decoration:underline">${(typeof DR!=='undefined'?DR.filter(r=>r.dist===d.n).length:0)||nOn()}</b><span>Restaurants (tap for list)</span></div>${(typeof DS!=='undefined'&&DS.some(x=>x.dist===d.n))?`<div style="cursor:pointer" onclick="openRoster(${JSON.stringify(d.n).replace(/"/g,'&quot;')},'stores')" title="Open the store list"><b style="color:#1f4e79;text-decoration:underline">${DS.filter(x=>x.dist===d.n).length}</b><span>Stores (tap for list)</span></div>`:''}<div><b style="font-size:1rem">${d.ont.split(',')[1].trim()}</b><span>From downtown Oxnard (${d.ont.split(',')[0]})</span></div><div><b style="font-size:1rem">${d.kind.split(' ')[0]}</b><span>Kind</span></div></div><p class="seas">${d.desc}</p><p class="seas"><i>Anchors</i>${d.anchors}</p><p class="seas"><i>Transit</i>${d.transit}</p><p class="seas"><i>Events</i>${d.events}</p><p class="seas"><i>Parking</i>${d.parking}</p><p class="seas"><i>Sources</i>${[[d.web,'District site'],[d.dir,'Restaurant directory'],[d.city,d.cityl]].filter(x=>x[0]).map(x=>`<a href="${x[0]}" target="_blank" rel="noopener">${x[1]}</a>`).join(' &middot; ')}${(d.aud||[]).length?' &middot; '+(d.aud||[]).map(u=>{let h='';try{h=new URL(u).hostname.replace(/^www\./,'');}catch(e){h=u;}return `<a href="${u}" target="_blank" rel="noopener">${h}</a>`;}).join(' &middot; '):''}<br><span style="color:#5f5b50">Facts checked against these pages in October 2026; drive times are estimates.</span></p><p class="note">Outline drawn around the restaurant cluster, approximate; drive times are typical off-peak estimates from Plaza Park in downtown Oxnard. "Restaurants" counts every restaurant in the district's roster; zoom in on the district to see them all, or open its list in the legend.</p>`;
+ poly.bindTooltip(d.n,{sticky:true}).bindPopup(card,{maxWidth:300,autoPanPaddingTopLeft:[10,10],autoPanPaddingBottomRight:[10,60]});
+ const pin=L.marker(ctr,{icon:L.divIcon({className:'',html:`<div class="dpill" style="--c:${col}"><b>&#9832;</b>${d.n.split(' and ')[0].split(' (')[0]}</div>`,iconSize:[10,22],iconAnchor:[5,11]}),zIndexOffset:400}).addTo(grp);
+ pin.bindPopup(card,{maxWidth:300,autoPanPaddingTopLeft:[10,10],autoPanPaddingBottomRight:[10,60]});
+ distLayers[d.n]=grp.addTo(distG);
+ const rows=(typeof DR!=='undefined'?DR:[]).filter(r=>r.dist===d.n);d._grp=grp;
+ const rcard=r=>{const q2=encodeURIComponent(r.n+', '+r.a+', CA');const nm2=r.web?`<a href="${r.web}" target="_blank" rel="noopener">${r.n}</a>`:r.n;const src2=(r.src||[]).map(k=>`<a href="${k[1]}" target="_blank" rel="noopener">${k[0]}</a>`).join(' &middot; ');
+  return `${r.img?`<img class="hphoto" src="${r.img}" alt="" loading="lazy" onerror="this.style.display='none'">`:''}<h2>${nm2}</h2><div class="btns" style="margin:0 0 4px"><button type="button" onclick="openRoster(${JSON.stringify(d.n).replace(/"/g,'&quot;')})">&#8592; Back to ${d.n.split(' and ')[0].split(' (')[0]} list</button></div><p class="addr">${r.a}. ${r.c}. ${r.cu?r.cu.replace(/\.?$/,'. '):''}${d.n.startsWith('The ')?'In '+d.n+'.':'In the '+d.n+' district.'}</p><p class="addr" style="line-height:1.7"><a href="https://www.google.com/maps/search/?api=1&query=${q2}" target="_blank" rel="noopener">Google listing</a> &middot; <a href="https://www.google.com/maps/dir/?api=1&destination=${q2}" target="_blank" rel="noopener">Directions</a>${r.menu?` &middot; <a href="${r.menu}" target="_blank" rel="noopener">Menu</a>`:''}${r.ig?` &middot; <a href="${r.ig}" target="_blank" rel="noopener">Instagram</a>`:''}${r.fb?` &middot; <a href="${r.fb}" target="_blank" rel="noopener">Facebook</a>`:''}${r.tt?` &middot; <a href="${r.tt}" target="_blank" rel="noopener">TikTok</a>`:''}${r.ot?` &middot; <a href="${r.ot}" target="_blank" rel="noopener">Reserve</a>`:''}${r.yelp?` &middot; <a href="${r.yelp}" target="_blank" rel="noopener">Yelp</a>`:''}</p><div class="kv"><div><b style="${(r.rc||0)<20?'color:#9e9e9e':''}">${r.rt==null?'?':r.rt}</b><span>Rating${r.rating_src?' ('+r.rating_src.replace('Google via Wanderlog','Google')+')':''}${(r.rc||0)<20&&r.rt!=null?', few reviews':''}</span></div><div><b>${(r.rc||0)?r.rc.toLocaleString():'?'}</b><span>Reviews</span></div><div><b style="font-size:1rem">${r.p||'?'}</b><span>Price</span></div></div><p class="seas"><i>Sources</i>${src2||'District directory'}</p><p class="note">District roster entry: every restaurant listed for the district, any price or rating. Position is schematic (spread along the district's main street or around its center), so use the Google listing or Directions link for the exact spot. Ratings with fewer than 20 reviews are shown in grey.</p>`;};
+ const slug='d_'+d.n.toLowerCase().replace(/[^a-z]+/g,'-');
+ const lab=document.createElement('div');lab.className='oc';lab.innerHTML=`<label style="width:100%;padding:2px 0"><input type="checkbox" id="${slug}" data-dist="${d.n}" checked> <span style="color:${col};font-weight:700">&#9832;</span> <b style="font-size:.85rem">${d.n.split(' and ')[0].split(' (')[0]}</b> <span style="color:#5f5b50">(${d.c}, ${d.ont.split(',')[1].trim()}, ${rows.length} listed)</span></label><div class="btns" style="margin:2px 0 4px;width:100%"><button type="button" data-dz="${d.n}">Zoom to district</button><button type="button" data-ol="${d.n}">Open full list</button><button type="button" data-sort="az">A to Z</button><button type="button" data-sort="rt">By rating</button></div><div class="dlist"></div>`;(d.c==='Oxnard'?distTogs:distTogs2).appendChild(lab);
+ const list=lab.querySelector('.dlist');let sortBy='az';
+ const render=()=>{const w=x=>x.rt==null?-1:(x.rc||0)<20?x.rt-10:x.rt;const rs=rows.slice().sort((x,y)=>sortBy==='rt'?((w(y)-w(x))||((y.rc||0)-(x.rc||0))||x.n.localeCompare(y.n)):x.n.localeCompare(y.n));
+  list.innerHTML=rs.map(r=>`<a data-i="${rows.indexOf(r)}">${r.n}${r.rt!=null?` <span style="color:${(r.rc||0)<20?'#9e9e9e':'#5f5b50'}">${r.rt}</span>`:''}</a>`).join('')||'<span style="color:#5f5b50">Roster not yet loaded.</span>';
+  list.querySelectorAll('a').forEach(x=>x.onclick=()=>{const r=rows[+x.dataset.i];map.setView([r.lat,r.lng],17);(()=>{const pp=L.popup({maxWidth:300,autoPanPaddingTopLeft:[10,10],autoPanPaddingBottomRight:[10,60]}).setLatLng([r.lat,r.lng]).setContent(rcard(r));pp._rdata=r;pp.openOn(map);})();});
+  lab.querySelectorAll('[data-sort]').forEach(bn=>bn.style.fontWeight=bn.dataset.sort===sortBy?'700':'400');};
+ DLIST_RENDER[d.n]=render;lab.querySelectorAll('[data-sort]').forEach(bn=>bn.onclick=()=>{sortBy=bn.dataset.sort;render();if(sortBy==='rt')liveDistrict(d.n);});render();
+ lab.querySelector('input').onchange=e=>{e.target.checked?grp.addTo(distG):distG.removeLayer(grp);syncDist();};
+ lab.querySelector('[data-dz]').onclick=()=>map.fitBounds(poly.getBounds(),{padding:[20,20],maxZoom:17});lab.querySelector('[data-ol]').onclick=()=>openRoster(d.n);});
+const DGROUPS=[[distTogs,document.getElementById('tAllDist')],[distTogs2,document.getElementById('tAllDist2')]].map(([box,all])=>({cbs:[...box.querySelectorAll('input[data-dist]')],all}));
+function syncDist(){DGROUPS.forEach(g=>{const k=g.cbs.filter(c=>c.checked).length;g.all.checked=k===g.cbs.length;g.all.indeterminate=k>0&&k<g.cbs.length;});}
+DGROUPS.forEach(g=>{g.all.onchange=e=>{const on=e.target.checked;g.cbs.forEach(cb=>{if(cb.checked!==on){cb.checked=on;cb.onchange({target:cb});}});syncDist();};});
+/* live Google ratings for a whole district roster: fetched when the list is opened or sorted by rating, 4 at a time, cached for the session */
+function liveDistrict(name,force){if((LIVE_DONE[name]&&!force)||typeof livePlace!=='function')return;LIVE_DONE[name]=true;
+ const rows=(typeof DR!=='undefined'?DR:[]).filter(r=>r.dist===name&&(!r._live||r._miss));let i=0,done=0;rows.forEach(r=>{if(r._miss){Object.keys(PLACE_CACHE).forEach(k=>{if(k.startsWith(r.n+'|'))delete PLACE_CACHE[k];});}});LIVE_PROG[name]={done:0,total:rows.length};
+ const rerender=()=>{if(DLIST_RENDER[name])DLIST_RENDER[name]();if(rpDist===name)renderRoster();};
+ let t=null;const bump=()=>{done++;LIVE_PROG[name].done=done;clearTimeout(t);t=setTimeout(rerender,done>=rows.length?0:400);};
+ const worker=async()=>{while(i<rows.length){const r=rows[i++];try{const addr=/\bCA\b/.test(r.a)?r.a.replace(/,?\s*CA\s*\d{0,5}\s*$/,'')+', CA':r.a+(r.a.includes(r.c)?'':', '+r.c)+', CA';let pl=await livePlace(r.n,addr,r.lat,r.lng);
+   if(!pl||pl.rating==null){const alt=await livePlace(r.n.replace(/\s*\(.*?\)\s*/g,' ').trim(),r.c+', CA',r.lat,r.lng,6000);if(alt&&alt.rating!=null)pl=alt;}
+   if(pl&&pl.rating!=null){r.rt=pl.rating;r.rc=pl.userRatingCount||0;r.rating_src='Google (live)';if(pl.priceLevel&&PRICE[pl.priceLevel])r.p=PRICE[pl.priceLevel];r._miss=false;}
+   else{r._miss=pl?'norating':'nomatch';console.warn('no Google rating for',r.n,r._miss);}
+   r._live=true;}catch(e){r._miss='error';r._err=String(e.message||e);console.warn('live rating failed',r.n,e);}bump();}};
+ for(let k=0;k<3;k++)worker();rerender();}
+/* roster pop-out panel */
+const rp=document.getElementById('rpanel');let rpDist=null,rpSort='rt';
+function rosterCard(d,r){const q2=encodeURIComponent(r.n+', '+r.a+', CA');const nm2=r.web?`<a href="${r.web}" target="_blank" rel="noopener">${r.n}</a>`:r.n;const src2=(r.src||[]).map(k=>`<a href="${k[1]}" target="_blank" rel="noopener">${k[0]}</a>`).join(' &middot; ');
+ return `${r.img?`<img class="hphoto" src="${r.img}" alt="" loading="lazy" onerror="this.style.display='none'">`:''}<h2>${nm2}</h2><div class="btns" style="margin:0 0 4px"><button type="button" onclick="openRoster(${JSON.stringify(d.n).replace(/"/g,'&quot;')})">&#8592; Back to ${d.n.split(' and ')[0].split(' (')[0]} list</button></div><p class="addr">${r.a}. ${r.c}. ${r.cu?r.cu.replace(/\.?$/,'. '):''}${d.n.startsWith('The ')?'In '+d.n+'.':'In the '+d.n+' district.'}</p><p class="addr" style="line-height:1.7"><a href="https://www.google.com/maps/search/?api=1&query=${q2}" target="_blank" rel="noopener">Google listing</a> &middot; <a href="https://www.google.com/maps/dir/?api=1&destination=${q2}" target="_blank" rel="noopener">Directions</a>${r.menu?` &middot; <a href="${r.menu}" target="_blank" rel="noopener">Menu</a>`:''}${r.ig?` &middot; <a href="${r.ig}" target="_blank" rel="noopener">Instagram</a>`:''}${r.fb?` &middot; <a href="${r.fb}" target="_blank" rel="noopener">Facebook</a>`:''}${r.tt?` &middot; <a href="${r.tt}" target="_blank" rel="noopener">TikTok</a>`:''}${r.ot?` &middot; <a href="${r.ot}" target="_blank" rel="noopener">Reserve</a>`:''}${r.yelp?` &middot; <a href="${r.yelp}" target="_blank" rel="noopener">Yelp</a>`:''}</p><div class="kv"><div><b style="${(r.rc||0)<20?'color:#9e9e9e':''}">${r.rt==null?'?':r.rt}</b><span>Rating${r.rating_src?' ('+r.rating_src.replace('Google via Wanderlog','Google')+')':''}${(r.rc||0)<20&&r.rt!=null?', few reviews':''}</span></div><div><b>${(r.rc||0)?r.rc.toLocaleString():'?'}</b><span>Reviews</span></div><div><b style="font-size:1rem">${r.p||'?'}</b><span>Price</span></div></div><p class="seas"><i>Sources</i>${src2||'District directory'}</p><p class="note">District roster entry: every restaurant listed for the district, any price or rating. Position is schematic (spread along the district's main street or around its center), so use the Google listing or Directions link for the exact spot. Ratings with fewer than 20 reviews are shown in grey.</p>`;}
+function renderRoster(){const d=DISTRICTS.find(x=>x.n===rpDist);if(!d)return;const hasS=(typeof DS!=='undefined')&&DS.some(x=>x.dist===d.n);document.getElementById('rpMode').style.display=hasS?'':'none';if(!hasS)rpMode='rest';document.querySelectorAll('#rpanel [data-rm]').forEach(b=>b.classList.toggle('on',b.dataset.rm===rpMode));document.getElementById('rpSortRest').style.display=rpMode==='rest'?'':'none';document.getElementById('rpSortStores').style.display=rpMode==='stores'?'':'none';if(rpMode==='stores'){renderStores(d);return;}const rows=(typeof DR!=='undefined'?DR:[]).filter(r=>r.dist===d.n);
+ const pr=x=>(x.p||'').length||99;
+ const w=x=>x.rt==null?-1:(x.rc||0)<20?x.rt-10:x.rt;const rs=rows.slice().sort((x,y)=>rpSort==='rt'?((w(y)-w(x))||(y.rc||0)-(x.rc||0)||x.n.localeCompare(y.n)):rpSort==='cu'?((x.cu||'zz').localeCompare(y.cu||'zz')||x.n.localeCompare(y.n)):rpSort==='p'?(pr(x)-pr(y)||(y.rt||0)-(x.rt||0)||x.n.localeCompare(y.n)):x.n.localeCompare(y.n));
+ document.getElementById('rpTitle').textContent=d.n;const pg=LIVE_PROG[d.n];document.getElementById('rpSub').textContent=`${rows.length} restaurants, ${d.c}. ${rows.filter(r=>r.rt!=null).length} with a rating`+(pg&&pg.done<pg.total?`, loading live Google ratings (${pg.done} of ${pg.total})`:rows.some(r=>r._live)?', ratings live from Google'+(rows.filter(r=>r._miss).length?` (${rows.filter(r=>r._miss).length} not matched)`:''):'')+'. Tap one to see it on the map.';const em=rows.find(r=>r._err&&r._err.includes(':'));if(em&&!(pg&&pg.done<pg.total))document.getElementById('rpSub').textContent+=' Google says: '+em._err.split(':').slice(1).join(':').trim();const rb=document.getElementById('rpRetry');if(rb)rb.style.display=(rows.some(r=>r._miss)&&!(pg&&pg.done<pg.total))?'':'none';
+ document.getElementById('rpList').innerHTML=rs.map(r=>`<a data-n="${encodeURIComponent(r.n)}"><span class="nm">${r.n}</span><span class="rt">${r.rt!=null?((r.rc||0)<20?'<span style="color:#9e9e9e">'+r.rt+'</span>':r.rt)+' <small>('+(r.rc!=null?r.rc.toLocaleString():'?')+')</small>':(r._miss==='nomatch'?'<small>no Google match</small>':r._miss==='error'?'<small title="'+(r._err||'').replace(/"/g,'')+'">lookup failed'+(r._err?' ('+r._err.replace('places ','').split(':')[0]+')':'')+'</small>':'<small>no rating</small>')}${r.p?' <small>'+r.p+'</small>':''}</span><span class="cu">${r.cu||''}</span></a>`).join('');
+ document.querySelectorAll('#rpanel [data-rs]').forEach(b=>b.classList.toggle('on',b.dataset.rs===rpSort));
+ document.querySelectorAll('#rpList a').forEach(a=>a.onclick=()=>{const r=rows.find(x=>x.n===decodeURIComponent(a.dataset.n));map.setView([r.lat,r.lng],17);(()=>{const pp=L.popup({maxWidth:300,autoPanPaddingTopLeft:[10,10],autoPanPaddingBottomRight:[10,60]}).setLatLng([r.lat,r.lng]).setContent(rosterCard(d,r));pp._rdata=r;pp.openOn(map);})();if(window.innerWidth<=700)rp.classList.remove('open');});}
+let rpMode='rest',rpSSort='tier';window.openRoster=(n,mode)=>{rpDist=n;rpMode=mode||'rest';rp.classList.add('open');map.closePopup();document.getElementById('kpanel').classList.remove('open');renderRoster();liveDistrict(n);if(window.innerWidth<=700)panel.classList.remove('open');};
+document.getElementById('rpBack').onclick=()=>{rp.classList.remove('open');panel.classList.add('open');document.getElementById('pind').textContent='tap to hide';};
+document.getElementById('rpDistCard').onclick=()=>{const d=DISTRICTS.find(x=>x.n===rpDist);if(d&&d._grp){const pin=d._grp.getLayers().find(l=>l.getPopup&&l.getPopup()&&l instanceof L.Marker);if(pin){rp.classList.remove('open');pin.openPopup();}}};
+document.getElementById('rpClose').onclick=()=>rp.classList.remove('open');
+document.getElementById('rpRetry').onclick=()=>liveDistrict(rpDist,true);
+document.querySelectorAll('#rpanel [data-rs]').forEach(b=>b.onclick=()=>{rpSort=b.dataset.rs;renderRoster();});
+document.querySelectorAll('#rpanel [data-rm]').forEach(b=>b.onclick=()=>{rpMode=b.dataset.rm;renderRoster();});document.querySelectorAll('#rpanel [data-ss]').forEach(b=>b.onclick=()=>{rpSSort=b.dataset.ss;renderRoster();});
+const STIER=['Luxury','Premium','Mid-market','Value'];const STIER_C={Luxury:'#6b1f7a',Premium:'#b3412f','Mid-market':'#c98a1c',Value:'#2f7d4e'};
+function renderStores(d){const rows=(typeof DS!=='undefined'?DS:[]).filter(x=>x.dist===d.n);const ti=x=>{const i=STIER.indexOf(x.tier);return i<0?9:i;};const rs=rows.slice().sort((x,y)=>rpSSort==='tier'?(ti(x)-ti(y)||(x.cat||'').localeCompare(y.cat||'')||x.n.localeCompare(y.n)):rpSSort==='cat'?((x.cat||'zz').localeCompare(y.cat||'zz')||ti(x)-ti(y)||x.n.localeCompare(y.n)):x.n.localeCompare(y.n));const meta=(typeof DS_META!=='undefined'&&DS_META[d.n])||{};
+ document.getElementById('rpTitle').textContent=d.n;document.getElementById('rpSub').innerHTML=`${rows.length} stores, ${d.c}, ${meta.partial?'partial list (the center\'s own directory could not be opened; from':'from the center\'s own directory'}${meta.src&&meta.src[0]?` (<a href="${meta.src[0][1]}" target="_blank" rel="noopener">${meta.src[0][0]}</a>)`:''}${meta.partial?')':''}. Tiers: ${STIER.map(t=>`<span class="term" data-term="st_${t}" title="${(meta.tier_note||{})[t]||''}" style="color:${STIER_C[t]}">${t}</span>`).join(', ')}. Hover or tap a tier for its definition; tap a store for its site.`;document.getElementById('rpRetry').style.display='none';
+ document.getElementById('rpList').innerHTML=rs.map(x=>`<a ${x.web?`href="${x.web}" target="_blank" rel="noopener"`:''}><span class="nm">${x.n}</span><span class="rt" style="color:${STIER_C[x.tier]||'#5f5b50'}">${x.tier||''}</span><span class="cu">${x.cat||''}</span></a>`).join('');
+ document.querySelectorAll('#rpanel [data-ss]').forEach(b=>b.classList.toggle('on',b.dataset.ss===rpSSort));}
+document.addEventListener('click',e=>{const el=e.target.closest&&e.target.closest('.term[data-term^="st_"]');if(!el)return;e.preventDefault();e.stopPropagation();const nx=el.nextElementSibling;if(nx&&nx.classList.contains('termnote')){nx.remove();return;}const d=document.createElement('span');d.className='termnote';d.textContent=el.title;el.after(d);},true);
+/* restaurants: R array in restaurants.js. Fields: c city, t tier (fine/upscale/mid), n name, a address, cu cuisine, rt rating, rc review count, p price string, lat, lng, web, yelp, src [[label,url]], note, badge */
+const tierCbs=[...document.querySelectorAll('#tierToggles input[data-tier]')];
+const ONT=[34.1975,-119.1771];const dist=c=>{const hs=R.filter(x=>x.c===c);const la=hs.reduce((a,x)=>a+x.lat,0)/hs.length,ln=hs.reduce((a,x)=>a+x.lng,0)/hs.length;return Math.hypot(la-ONT[0],(ln-ONT[1])*0.83);};
+const COUNTY={'Ventura County':['Port Hueneme','Camarillo','Ventura','Ojai','Santa Paula','Fillmore','Moorpark','Simi Valley','Thousand Oaks','Westlake Village'],
+ 'Santa Barbara County':['Carpinteria','Montecito','Santa Barbara','Goleta','Summerland'],
+ 'Los Angeles County':['Agoura Hills','Calabasas','Hidden Hills','Malibu','Topanga']};
+Object.keys(COUNTY).forEach(k=>COUNTY[k]=COUNTY[k].filter(c=>R.some(x=>x.c===c)).sort((a,b)=>dist(a)-dist(b)));
+const OC_OTHER=[].concat(...Object.values(COUNTY));const OC_ORDER=['Oxnard',...OC_OTHER];const CITY_CENTER_FROM_LIMITS=OC_ORDER.filter(c=>!['Montecito','Summerland','Topanga'].includes(c));
+const OG={};OC_ORDER.forEach(c=>{OG[c]={};Object.keys(CAT).forEach(t=>OG[c][t]=L.layerGroup());});const TG=OG['Oxnard'];
+const countyBox=document.getElementById('countyBox');const CSTATE={};
+Object.keys(COUNTY).forEach(k=>{const slug=k.toLowerCase().replace(/ /g,'-');const cities=COUNTY[k];const n=cities.reduce((a,c)=>a+R.filter(x=>x.c===c).length,0);
+ const div=document.createElement('div');div.className='oc';div.id='oc_'+slug;
+ div.innerHTML=`<label style="width:100%;padding:2px 0"><input type="checkbox" id="oc_${slug}_all" checked> <b style="font-size:.85rem">${k}</b> <span style="color:#5f5b50">(${cities.length} cities, ${n} restaurants)</span></label><div class="btns" style="margin:2px 0 4px;width:100%"><button type="button" data-cx="${k}">Spread</button><button type="button" data-cg="${k}">Gather</button></div>`+cities.map(c=>`<label><input type="checkbox" data-ocity="${c}" checked> ${c} <span style="color:#5f5b50">(${R.filter(x=>x.c===c).length})</span></label>`).join('');
+ countyBox.appendChild(div);CSTATE[k]={all:div.querySelector('#oc_'+slug+'_all'),cbs:[...div.querySelectorAll('input[data-ocity]')]};
+ div.querySelector('[data-cx]').onclick=()=>cities.forEach(c=>{if(ocState[c]){ocState[c].expanded=true;refreshCity(c);}});
+ div.querySelector('[data-cg]').onclick=()=>cities.forEach(c=>{if(ocState[c]){ocState[c].expanded=false;refreshCity(c);}});});
+const ocBox=document.getElementById('otherToggles');
+function inDist(x){for(const d of DISTRICTS){const p=d.poly;let ins=false;for(let i=0,j=p.length-1;i<p.length;j=i++){const yi=p[i][0],xi=p[i][1],yj=p[j][0],xj=p[j][1];if(((yi>x.lat)!==(yj>x.lat))&&(x.lng<(xj-xi)*(x.lat-yi)/(yj-yi)+xi))ins=!ins;}if(ins)return d.n;}return null;}
+let MINRT=4.5;const passes=x=>x.t==='award'||(x.rt!=null&&x.rt>=MINRT)||MINRT===0;
+R.forEach(x=>{const d=Math.round(14+Math.sqrt(x.rc||50)*0.55);
+ const icon=L.divIcon({className:'',html:`<div class="mk${x.c==='Oxnard'?'':' oth'}" style="width:${d}px;height:${d}px;background:${CAT[x.t].c}">${x.rt}</div>`,iconSize:[d,d],iconAnchor:[d/2,d/2],popupAnchor:[0,-d/2]});
+ const src=(x.src||[]).map(k=>`<a href="${k[1]}" target="_blank" rel="noopener">${k[0]}</a>`).join(' &middot; ');
+ const nm=x.web?`<a href="${x.web}" target="_blank" rel="noopener">${x.n}</a>`:x.n;
+ const yelp=x.yelp?`<a href="${x.yelp}" target="_blank" rel="noopener">Yelp page</a>`:'';
+ x._m=L.marker([x.lat,x.lng],{icon});x._m._rdata=x;x._m.bindPopup(`${x.img?`<img class="hphoto" src="${x.img}" alt="" loading="lazy" onerror="this.style.display='none'">`:''}<h2>${nm}</h2>${inDist(x)?`<div class="btns" style="margin:0 0 4px"><button type="button" onclick="openRoster(${JSON.stringify(inDist(x)).replace(/"/g,'&quot;')})">&#8592; ${inDist(x).split(' and ')[0].split(' (')[0]} list</button></div>`:''}<p class="addr">${x.a}. ${x.c}. ${x.cu?x.cu.replace(/\.?$/,'.'):''}${x.rs?' Rating source: '+x.rs+'.':''}${inDist(x)?(inDist(x).startsWith('The ')?' In '+inDist(x)+'.':' In the '+inDist(x)+' district.'):''}</p><p class="addr" style="line-height:1.7"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(x.n+', '+x.a+', CA')}" target="_blank" rel="noopener">Google listing</a> &middot; <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(x.n+', '+x.a+', CA')}" target="_blank" rel="noopener">Directions</a>${x.menu?` &middot; <a href="${x.menu}" target="_blank" rel="noopener">Menu</a>`:''}${x.ig?` &middot; <a href="${x.ig}" target="_blank" rel="noopener">Instagram</a>`:''}${x.fb?` &middot; <a href="${x.fb}" target="_blank" rel="noopener">Facebook</a>`:''}${x.ot?` &middot; <a href="${x.ot}" target="_blank" rel="noopener">Reserve</a>`:''}${yelp?' &middot; '+yelp:''}</p>${x.award?`<a class="badge" href="${x.award_url||'#'}" target="_blank" rel="noopener" style="text-decoration:none">${x.award}</a>`:''}<div class="kv"><div><b>${x.rt==null?'?':x.rt}</b><span>Rating${x.rs?' ('+x.rs.replace('Google via Wanderlog','Google')+')':''}</span></div><div><b>${(x.rc||0).toLocaleString()}</b><span>Reviews</span></div><div><b style="font-size:1rem">${x.p||CAT[x.t].l}</b><span>Price</span></div></div>${x.note?`<p class="seas"><i>Notes</i>${x.note}</p>`:''}<p class="seas"><i>Sources</i>${src||'Not yet sourced'}</p><p class="note">Rating, review count and price tier as shown by the source cited at the time of collection; they change. Placed by address, approximate.</p>`,{maxWidth:300,autoPanPaddingTopLeft:[10,10],autoPanPaddingBottomRight:[10,60]});});
+function applyRating(){R.forEach(x=>{const g=OG[x.c][x.t];passes(x)?x._m.addTo(g):g.removeLayer(x._m);});OC_ORDER.forEach(c=>{const st=ocState&&ocState[c];if(!st)return;const hs=R.filter(x=>x.c===c&&passes(x));st.n=hs.length;const rc=hs.reduce((a,x)=>a+(x.rc||0),0);st.dot.setIcon(L.divIcon({className:'',html:`<div class="cdot" style="width:${st.w}px;height:${st.d+22}px"><div class="mk${c==='Oxnard'?'':' oth'}" style="width:${st.d}px;height:${st.d}px;background:${CAT[st.top].c}">${hs.length}</div><div class="ct" style="top:${st.d+2}px">${c} &middot; ${hs.length} restaurant${hs.length===1?'':'s'}</div></div>`,iconSize:[st.w,st.d+22],iconAnchor:[st.w/2,st.d/2]}));st.dot.setTooltipContent(`${c}: ${hs.length} restaurant${hs.length===1?'':'s'} shown at this rating cutoff, ${rc.toLocaleString()} reviews. Tap to spread.`);refreshCity(c);});}
+document.querySelectorAll('input[name=minrt]').forEach(r=>r.onchange=()=>{MINRT=parseFloat(r.value);applyRating();});
+const otCbs=[...ocBox.querySelectorAll('input[data-otier]')];const ocCityCbs=[...countyBox.querySelectorAll('input[data-ocity]')];const ocAll=document.getElementById('tAllOther');
+const cityCb=c=>ocCityCbs.find(x=>x.dataset.ocity===c);
+function setBox(cb,n,len){cb.checked=n===len;cb.indeterminate=n>0&&n<len;}
+function syncOc(){Object.keys(COUNTY).forEach(k=>{const st=CSTATE[k];setBox(st.all,st.cbs.filter(x=>x.checked).length,st.cbs.length);});setBox(ocAll,ocCityCbs.filter(x=>x.checked).length,ocCityCbs.length);}
+const ocState={};const cdG=L.layerGroup().addTo(map);
+OC_ORDER.forEach(city=>{const hs=R.filter(x=>x.c===city);if(!hs.length){ocState[city]=null;return;}const rc=hs.reduce((a,x)=>a+(x.rc||0),0);
+ const lat=hs.reduce((a,x)=>a+x.lat,0)/hs.length,lng=hs.reduce((a,x)=>a+x.lng,0)/hs.length;
+ const byT={};hs.forEach(x=>byT[x.t]=(byT[x.t]||0)+1);const top=Object.keys(byT).sort((a,b)=>byT[b]-byT[a])[0]||'upscale';
+ const d=Math.min(48,Math.round(18+Math.sqrt(hs.length)*5));const w=Math.max(d,160);
+ const dot=L.marker([lat,lng],{icon:L.divIcon({className:'',html:`<div class="cdot" style="width:${w}px;height:${d+22}px"><div class="mk${city==='Oxnard'?'':' oth'}" style="width:${d}px;height:${d}px;background:${CAT[top].c}">${hs.length}</div><div class="ct" style="top:${d+2}px">${city} &middot; ${hs.length} restaurants</div></div>`,iconSize:[w,d+22],iconAnchor:[w/2,d/2]}),zIndexOffset:500});
+ dot.bindTooltip(`${city}: ${hs.length} restaurants rated 4.5+, ${rc.toLocaleString()} reviews. Tap to spread.`,{direction:'top',offset:[0,-d/2]});
+ const lbl=L.marker([lat,lng],{icon:L.divIcon({className:'',html:`<div class="cgather">${city}: gather restaurants</div>`,iconSize:[160,18],iconAnchor:[80,9]}),zIndexOffset:500});
+ dot.on('click',()=>{ocState[city].expanded=true;refreshCity(city);});lbl.on('click',()=>{ocState[city].expanded=false;refreshCity(city);});
+ ocState[city]={expanded:false,dot,lbl,n:hs.length,d,w,top,rooms:rc};});
+window.setCityCenter=(city,ll)=>{const st=ocState[city];if(!st)return;st.dot.setLatLng(ll);st.lbl.setLatLng(ll);};
+function refreshCity(city){const st=ocState[city];if(!st)return;if(st.n===0){cdG.removeLayer(st.dot);cdG.removeLayer(st.lbl);Object.values(OG[city]).forEach(g=>map.removeLayer(g));return;}
+ const cbs=city==='Oxnard'?tierCbs:otCbs;const key=city==='Oxnard'?'tier':'otier';
+ const on=(city==='Oxnard'||cityCb(city).checked)&&cbs.some(c=>c.checked);const showDot=on&&!st.expanded,showLbl=on&&st.expanded;
+ showDot?st.dot.addTo(cdG):cdG.removeLayer(st.dot);showLbl?st.lbl.addTo(cdG):cdG.removeLayer(st.lbl);
+ cbs.forEach(cb=>{const g=OG[city][cb.dataset[key]];(on&&st.expanded&&cb.checked)?g.addTo(map):map.removeLayer(g);});}
+const allCb=document.getElementById('tAllHotels');
+function syncAll(){const n=tierCbs.filter(c=>c.checked).length;allCb.checked=n===tierCbs.length;allCb.indeterminate=n>0&&n<tierCbs.length;}
+tierCbs.forEach(cb=>cb.onchange=()=>{refreshCity('Oxnard');syncAll();});
+allCb.onchange=e=>{const on=e.target.checked;tierCbs.forEach(cb=>{cb.checked=on;});refreshCity('Oxnard');syncAll();};
+otCbs.forEach(cb=>cb.onchange=()=>OC_OTHER.forEach(refreshCity));
+ocCityCbs.forEach(cb=>cb.onchange=()=>{refreshCity(cb.dataset.ocity);syncOc();});
+Object.keys(COUNTY).forEach(k=>CSTATE[k].all.onchange=e=>{const on=e.target.checked;CSTATE[k].cbs.forEach(x=>{x.checked=on;refreshCity(x.dataset.ocity);});syncOc();});
+ocAll.onchange=e=>{const on=e.target.checked;ocCityCbs.forEach(x=>{x.checked=on;refreshCity(x.dataset.ocity);});syncOc();};
+document.getElementById('ocExpand').onclick=()=>OC_OTHER.forEach(c=>{if(!ocState[c])return;ocState[c].expanded=true;refreshCity(c);});
+document.getElementById('ocCollapse').onclick=()=>OC_OTHER.forEach(c=>{if(!ocState[c])return;ocState[c].expanded=false;refreshCity(c);});
+document.getElementById('onExpand').onclick=()=>{if(ocState['Oxnard'])ocState['Oxnard'].expanded=true;refreshCity('Oxnard');};
+document.getElementById('onCollapse').onclick=()=>{if(ocState['Oxnard'])ocState['Oxnard'].expanded=false;refreshCity('Oxnard');};
+tierCbs.forEach(cb=>cb.checked=false);syncAll();ocCityCbs.forEach(cb=>cb.checked=false);syncOc();
+applyRating();
+map.fitBounds([[33.925,-117.683],[34.095,-117.52]]);
+/* collapsible legend sections */
+function makeSection(masterId){const m=document.getElementById(masterId);if(!m)return;const head=m.closest('label');const box=head.parentNode;head.classList.add('sechead');
+ const wrap=document.createElement('div');wrap.className='grp';let n=head.nextSibling;while(n){const nx=n.nextSibling;if(n.nodeType===1||(n.nodeType===3&&n.textContent.trim()))wrap.appendChild(n);n=nx;}box.appendChild(wrap);
+ const b=document.createElement('button');b.type='button';b.className='secbtn';b.setAttribute('aria-label','expand');b.textContent='\u25B8';head.insertBefore(b,head.firstChild);
+ b.onclick=e=>{e.preventDefault();e.stopPropagation();const o=wrap.classList.toggle('open');b.textContent=o?'\u25BE':'\u25B8';b.setAttribute('aria-label',o?'collapse':'expand');};}
+['tAllOverlays','tLA28','tAllHotels','tAllOther','tAllDist','tAllDist2','tAllCity'].forEach(makeSection);Object.keys(COUNTY).forEach(k=>makeSection('oc_'+k.toLowerCase().replace(/ /g,'-')+'_all'));DISTRICTS.forEach(d=>makeSection('d_'+d.n.toLowerCase().replace(/[^a-z]+/g,'-')));
+
+/* collapsible card sections: each <p class="seas"><i>Label</i>...</p> becomes a fold-out; collapsed by default on phones */
+function foldSections(el){if(!el||el.dataset.folded)return;el.dataset.folded='1';const small=window.innerWidth<=700;el.querySelectorAll('p.seas').forEach(p=>{if(!(p.firstElementChild&&p.firstElementChild.tagName==='I')){const i=document.createElement('i');i.textContent='About';p.prepend(i);}});const ps=[...el.querySelectorAll('p.seas')].filter(p=>p.firstElementChild&&p.firstElementChild.tagName==='I');
+ if(ps.length<2)return;
+ ps.forEach(p=>{const lab=p.firstElementChild;const d=document.createElement('details');d.className='seas';if(!small)d.open=true;const sm=document.createElement('summary');sm.appendChild(lab);d.appendChild(sm);const body=document.createElement('div');body.className='sb';while(p.firstChild)body.appendChild(p.firstChild);d.appendChild(body);
+  let nx=p.nextElementSibling;while(nx&&(nx.tagName==='TABLE'||(nx.tagName==='P'&&nx.className==='note'&&nx.nextElementSibling&&nx.nextElementSibling.className==='seas'))){const t=nx;nx=nx.nextElementSibling;body.appendChild(t);}
+  p.replaceWith(d);});
+ const bar=document.createElement('div');bar.className='foldbar';bar.innerHTML='<button type="button" data-f="1">Expand all</button><button type="button" data-f="0">Collapse all</button>';
+ bar.querySelectorAll('button').forEach(b=>b.onclick=()=>{el.querySelectorAll('details.seas').forEach(d=>d.open=b.dataset.f==='1');});
+ const h=el.querySelector('h2');(h&&h.parentNode===el)?h.after(bar):el.prepend(bar);}
+map.on('popupopen',e=>{const el=e.popup.getElement()&&e.popup.getElement().querySelector('.leaflet-popup-content');foldSections(el);const ll=e.popup.getLatLng();if(ll&&window.innerWidth<=700){setTimeout(()=>{const pt=map.latLngToContainerPoint(ll);const h=map.getSize().y;if(pt.y<h*0.62||pt.y>h*0.9)map.panBy([0,pt.y-h*0.78],{animate:true});},60);}});
+
+/* live Google data on cards (Places API, New): rating, review count, price and the current photo are fetched when a card opens, shown with a Google link, never stored */
+const PLACE_CACHE={};const PRICE={PRICE_LEVEL_FREE:'Free',PRICE_LEVEL_INEXPENSIVE:'$',PRICE_LEVEL_MODERATE:'$$',PRICE_LEVEL_EXPENSIVE:'$$$',PRICE_LEVEL_VERY_EXPENSIVE:'$$$$'};
+async function livePlace(name,addr,lat,lng,radius,attempt){const k=name+'|'+addr+'|'+(radius||'');if(PLACE_CACHE[k]!==undefined)return PLACE_CACHE[k];
+ const res=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.priceLevel,places.googleMapsUri,places.businessStatus,places.photos'},body:JSON.stringify({textQuery:name+', '+addr,maxResultCount:1,locationBias:{circle:{center:{latitude:lat,longitude:lng},radius:radius||1500}}})});
+ if(!res.ok){let msg='places '+res.status;try{const ej=await res.json();if(ej.error&&ej.error.status)msg+=' '+ej.error.status;if(ej.error&&ej.error.message){msg+=': '+ej.error.message;console.warn('Google Places error',ej.error.message);}}catch(_){}
+  if((res.status===429||res.status===503)&&(attempt||0)<3){await new Promise(r=>setTimeout(r,1500*((attempt||0)+1)));return livePlace(name,addr,lat,lng,radius,(attempt||0)+1);}throw new Error(msg);}
+ const j=await res.json();const pl=(j.places||[])[0]||null;PLACE_CACHE[k]=pl;return pl;}
+function esc(t){return String(t||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function livePhotoInto(el,pl){const ph=(pl.photos||[])[0];if(!ph||!ph.name)return;const url=`https://places.googleapis.com/v1/${ph.name}/media?maxWidthPx=640&key=${GKEY}`;
+ let img=el.querySelector('img.hphoto');const fresh=!img;if(!img){img=document.createElement('img');img.className='hphoto';img.alt='';img.loading='lazy';el.insertBefore(img,el.firstChild);}
+ const prev=img.src;img.onerror=function(){if(prev&&prev!==url){img.onerror=function(){img.style.display='none';};img.src=prev;}else img.style.display='none';};img.onload=function(){img.style.display='';};img.src=url;
+ const au=(ph.authorAttributions||[])[0];const cap=document.createElement('div');cap.className='note';cap.style.cssText='margin:-4px 0 6px;font-size:.72rem';cap.innerHTML='Photo: Google Maps'+(au?', <a href="'+esc(au.uri)+'" target="_blank" rel="noopener">'+esc(au.displayName)+'</a>':'')+', loaded live';img.after(cap);}
+function liveRatingInto(el,x){if(!el||el.dataset.live)return;el.dataset.live='1';const kv=el.querySelector('.kv');if(!kv)return;
+ const note=document.createElement('div');note.className='note';note.style.margin='2px 0 0';note.innerHTML='<span style="color:#5f5b50">Checking Google for the live rating&hellip;</span>';kv.after(note);
+ livePlace(x.n,x.a,x.lat,x.lng).then(pl=>{if(!pl){note.innerHTML='<span style="color:#5f5b50">No Google listing found for this name and address; figures above are from the sources cited.</span>';return;}
+  livePhotoInto(el,pl);
+  const closed=pl.businessStatus&&pl.businessStatus!=='OPERATIONAL';const gl=`<a href="${esc(pl.googleMapsUri)}" target="_blank" rel="noopener">View on Google Maps</a>`;
+  if(pl.rating==null){note.innerHTML='Google lists this place but shows no rating yet. '+gl;return;}
+  MODE_HOOK(el,kv,note,pl,x,closed,gl);
+ }).catch(e=>{note.innerHTML='<span style="color:#5f5b50">Live Google rating unavailable right now; figures above are from the sources cited.</span>';console.warn(e);});}
+map.on('popupopen',e=>{const p=e.popup;const el=p.getElement()&&p.getElement().querySelector('.leaflet-popup-content');if(!el)return;const src=p._source;let x=null;
+ if(src&&src._rdata)x=src._rdata;else if(p._rdata)x=p._rdata;if(!x)return;liveRatingInto(el,x);});
+function MODE_HOOK(el,kv,note,pl,x,closed,gl){const cells=kv.querySelectorAll('div');const rc=cells[0],cc=cells[1],pc=cells[2];
+ const sb=rc.querySelector('b'),sv=rc.querySelector('span');const old=sb.textContent;sb.textContent=pl.rating.toFixed(1);sb.style.color='';sv.textContent='Rating (Google, live)';
+ cc.querySelector('b').textContent=(pl.userRatingCount||0).toLocaleString();cc.querySelector('span').textContent='Reviews (Google)';
+ if(pl.priceLevel&&PRICE[pl.priceLevel]){pc.querySelector('b').textContent=PRICE[pl.priceLevel];pc.querySelector('span').textContent='Price (Google)';}
+ note.innerHTML=`Rating, reviews, price and photo fetched live from Google Places just now${old&&old!=='?'&&old!==pl.rating.toFixed(1)?` (snapshot on file was ${old})`:''}. ${gl}${closed?' <b style="color:#b3412f">Google lists this business as '+pl.businessStatus.toLowerCase().replace(/_/g,' ')+'.</b>':''}`;}
+/* self-test: one Places lookup plus basemap status, printed in the legend */
+document.getElementById('gcheck').onclick=async e=>{e.preventDefault();const out=document.getElementById('gcheckOut');out.textContent='Testing...';const lines=[];
+ lines.push('Page: '+location.host+location.pathname);
+ lines.push('Maps JavaScript API: '+(window.google&&google.maps?'loaded':'not loaded')+(useGoogle?', Google basemap on':', using Esri/CARTO fallback'));
+ try{const res=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.displayName,places.rating,places.userRatingCount'},body:JSON.stringify({textQuery:'Starbucks, Oxnard, CA',maxResultCount:1})});
+  const txt=await res.text();let j={};try{j=JSON.parse(txt);}catch(_){}
+  if(res.ok){const pl=(j.places||[])[0];lines.push('Places API (New): OK, HTTP '+res.status+(pl?', found '+(pl.displayName&&pl.displayName.text)+' rated '+pl.rating+' ('+pl.userRatingCount+' reviews)':', no result'));}
+  else lines.push('Places API (New): HTTP '+res.status+' '+((j.error&&(j.error.status+': '+j.error.message))||txt.slice(0,300)));
+ }catch(err){lines.push('Places API (New): request failed before Google answered ('+err.message+')');}
+ out.textContent=lines.join('\n');};
+/* map key panel */
+(()=>{const kp=document.getElementById('kpanel'),kb=document.getElementById('kpBody');let kz=0.82;const apply=()=>{kb.style.fontSize=kz+'rem';};
+ document.getElementById('keyOpen').onclick=()=>{kp.classList.add('open');map.closePopup();const rp=document.getElementById('rpanel');if(rp)rp.classList.remove('open');if(window.innerWidth<=700)panel.classList.remove('open');};
+ document.getElementById('kpClose').onclick=()=>kp.classList.remove('open');
+ document.getElementById('kpBack').onclick=()=>{kp.classList.remove('open');panel.classList.add('open');document.getElementById('pind').textContent='tap to hide';};
+ document.getElementById('kpPlus').onclick=()=>{kz=Math.min(1.6,kz+0.1);apply();};document.getElementById('kpMinus').onclick=()=>{kz=Math.max(0.6,kz-0.1);apply();};apply();const kmin=document.getElementById('kpMin');kmin.onclick=e=>{e.stopPropagation();kp.classList.toggle('min');kmin.textContent=kp.classList.contains('min')?'':'\u2013';kmin.title=kp.classList.contains('min')?'Expand':'Shrink to title bar';};kp.querySelector('.kh').addEventListener('click',e=>{if(kp.classList.contains('min')&&!e.target.closest('.kx')){kp.classList.remove('min');kmin.textContent='\u2013';kmin.title='Shrink to title bar';}});kb.addEventListener('click',e=>{const t=e.target.closest('.kst');if(!t)return;t.parentElement.classList.toggle('closed');});const kall=document.getElementById('kpAll');kall.onclick=()=>{const secs=[...kb.querySelectorAll('.ks')];const open=secs.some(x=>!x.classList.contains('closed'));secs.forEach(x=>x.classList.toggle('closed',open));kall.textContent=open?'Expand all':'Collapse all';};document.getElementById('kpBody').addEventListener('click',e=>{const el=e.target.closest('.kinfo');if(!el)return;const nx=el.nextElementSibling;if(nx&&nx.classList.contains('kdef')){nx.remove();return;}const d=document.createElement('span');d.className='kdef';d.textContent=el.dataset.def;el.after(d);});})();
+/* audit stamp on every card */
+const AUDIT_DATE='October 19, 2026';
+function auditStamp(el){if(!el||el.querySelector('.astamp'))return;const d=document.createElement('div');d.className='astamp';
+ d.innerHTML=`Link audit: ${AUDIT_DATE}. <a>What is this?</a><div class="ax">On the date shown, every link and figure on this card was checked by AI agents (Claude Sonnet, run by Anthropic's Claude), not by a person: each agent opened its share of the links to confirm it loads and points at the business or source named, each room count, rating or meeting figure was compared with the page it is cited to, and anything dead, wrong or out of date was reported and then fixed or removed. The audit is automated and can miss things a person would catch, so it is a check on links and figures, not an endorsement of any business. Links that could not be opened by automation (Instagram, Facebook, Yelp, Google Maps) were checked for correct form only. Ratings, prices and availability change daily, so treat figures as a dated snapshot and use the links for the live number.</div>`;
+ d.querySelector('a').onclick=e=>{e.preventDefault();d.classList.toggle('open');};el.appendChild(d);}
+map.on('popupopen',e=>{const el=e.popup.getElement()&&e.popup.getElement().querySelector('.leaflet-popup-content');auditStamp(el);});
+</script>
+</body>
+</html>
