@@ -10,12 +10,12 @@
 <script src="https://unpkg.com/leaflet.gridlayer.googlemutant@0.14.1/dist/Leaflet.GoogleMutant.js"></script>
 <script>const GKEY="AIzaSyBv-3fjCEu5UzXlyiA2OGjzyUl3tprLpxY";window.gmReady=function(){window._gmLoaded=true;if(window.onGoogleReady)window.onGoogleReady();};</script>
 <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBv-3fjCEu5UzXlyiA2OGjzyUl3tprLpxY&loading=async&callback=gmReady&v=weekly"></script>
-<script src="bbq.js?v=1792473336"></script>
-<script src="district_stores.js?v=1792473336"></script>
-<script src="district_restaurants.js?v=1792473336"></script>
-<script src="districts.js?v=1792473336"></script>
-<script src="restaurants.js?v=1792473336"></script>
-<script src="la_transit.js?v=1792473336"></script>
+<script src="bbq.js?v=1792473645"></script>
+<script src="district_stores.js?v=1792473645"></script>
+<script src="district_restaurants.js?v=1792473645"></script>
+<script src="districts.js?v=1792473645"></script>
+<script src="restaurants.js?v=1792473645"></script>
+<script src="la_transit.js?v=1792473645"></script>
 <style>
   html,body{height:100%;margin:0;font-family:"Times New Roman",Times,serif;color:#1d1c19;background:#111}
   #map{position:absolute;inset:0}
@@ -191,7 +191,7 @@
   <div class="btns" id="cityToggles"><label style="width:100%;padding:2px 0"><input type="checkbox" id="tAllCity" checked> <b style="font-size:.85rem">City limits</b> <span style="color:#5f5b50">(all on/off)</span></label></div>
   <p class="note"><a href="#" id="aboutTog">About the data</a></p>
   <div id="about" style="display:none">
-    <p class="note" style="margin:6px 0 2px"><b>Restaurants (174 on the main layers, plus 68 on the Barbecue layer).</b></p>
+    <p class="note" style="margin:6px 0 2px"><b>Restaurants (174 on the main layers, plus 69 on the Barbecue layer).</b></p>
     <ul class="bib dp">
       <li>Award-recognized restaurants (Michelin Guide stars, Bib Gourmands and recommendations; Wine Spectator Restaurant Awards) across the coast from Santa Barbara to Malibu, plus the $$$$ and $$$ restaurants and the top-rated $$ sit-down restaurants (4.5 or higher with 300+ reviews) found in Santa Barbara, Montecito, Carpinteria, Ojai, Ventura, Santa Paula, Oxnard, Camarillo, the Conejo Valley, Calabasas, Malibu, Topanga, the San Fernando Valley, Burbank, Glendale, Eagle Rock, Atwater Village and the Santa Clarita Valley, from the Michelin Guide, Wine Spectator, OpenTable, TripAdvisor, Wanderlog, Restaurantji and local press, October 19, 2026 <a href="#vref1" class="cite">[1]</a> <a href="#vref2" class="cite">[2]</a> <a href="#vref3" class="cite">[3]</a>.</li>
       <li>Price tiers come from the Michelin Guide, TripAdvisor or AAA where they publish one; where no source gave a price, the tier is inferred from the kind of restaurant and the card's note says so. OpenTable's price tags were not used because they show the top tier for nearly every restaurant here.</li>
@@ -205,7 +205,7 @@
       <li>Walkable restaurant clusters: historic downtowns and main streets, lifestyle centers, harbor villages and the Malibu coast-highway strips; outlines drawn around the cluster, not legal boundaries, from published coordinates and street numbering <a href="#vref5" class="cite">[5]</a>.</li>
       <li>Drive times are typical off-peak estimates from Plaza Park in downtown Oxnard, computed from road distance where no published figure was found.</li>
       <li>District rosters (481 restaurants) come from each district's own directory plus Wanderlog, TripAdvisor, Yelp and Michelin lists; positions are schematic along the main street. Several districts came back thinner than the research target (Downtown Oxnard, Point Dume, The Oaks, Whizin Market Square, Porter Ranch, Magnolia Park) because few of their tenants have a published address on a page that could be opened.</li>
-      <li>Barbecue layer (68 places: 30 Korean BBQ and 38 American BBQ, including Santa Maria tri-tip and the regional Wood Ranch locations) from Wanderlog, Infatuation, Eater, local press, delivery listings and the restaurants' own pages, with a closure check in the same pass (seven closed places removed). Yelp and Google Maps block the research tool, so Korean BBQ coverage in Sherman Oaks, Studio City and the west Valley may still be short.</li>
+      <li>Barbecue layer (69 places: 30 Korean BBQ and 39 American BBQ, including Santa Maria tri-tip and the regional Wood Ranch locations) from Wanderlog, Infatuation, Eater, local press, delivery listings and the restaurants' own pages, with a closure check in the same pass (seven closed places removed). A second verification pass on October 19, 2026 found no further closures; Yelp and Google Maps block the research tool, so Korean BBQ coverage in Sherman Oaks, Studio City and the west Valley may still be short.</li>
       <li>Store rosters (115 stores at six centers) are partial: the centers' own directories could not be opened from the research tool, so the lists come from the developers' portfolio pages, Visit Oxnard, Santa Barbara visitor pages, local press and Wikipedia. The Luxury, Premium, Mid-market and Value tiers follow standard retail positioning and were assigned by the map team <a href="#vref6" class="cite">[6]</a>.</li>
       <li>Rail: Metrolink Ventura County Line as drawn on the Ontario maps; Amtrak Pacific Surfliner runs on the same tracks and continues to Santa Barbara and Goleta <a href="#vref7" class="cite">[7]</a>.</li>
       <li>City limits are the State Board of Equalization city boundaries served by the California Department of Conservation, with unincorporated county land shaded <a href="#vref8" class="cite">[8]</a>.</li>
