@@ -10,12 +10,12 @@
 <script src="https://unpkg.com/leaflet.gridlayer.googlemutant@0.14.1/dist/Leaflet.GoogleMutant.js"></script>
 <script>const GKEY="AIzaSyBv-3fjCEu5UzXlyiA2OGjzyUl3tprLpxY";window.gmReady=function(){window._gmLoaded=true;if(window.onGoogleReady)window.onGoogleReady();};</script>
 <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBv-3fjCEu5UzXlyiA2OGjzyUl3tprLpxY&loading=async&callback=gmReady&v=weekly"></script>
-<script src="bbq.js?v=1792472821"></script>
-<script src="district_stores.js?v=1792472821"></script>
-<script src="district_restaurants.js?v=1792472821"></script>
-<script src="districts.js?v=1792472821"></script>
-<script src="restaurants.js?v=1792472821"></script>
-<script src="la_transit.js?v=1792472821"></script>
+<script src="bbq.js?v=1792472996"></script>
+<script src="district_stores.js?v=1792472996"></script>
+<script src="district_restaurants.js?v=1792472996"></script>
+<script src="districts.js?v=1792472996"></script>
+<script src="restaurants.js?v=1792472996"></script>
+<script src="la_transit.js?v=1792472996"></script>
 <style>
   html,body{height:100%;margin:0;font-family:"Times New Roman",Times,serif;color:#1d1c19;background:#111}
   #map{position:absolute;inset:0}
@@ -122,6 +122,7 @@
   .kpanel .ks.closed .kst::before{content:"\25B8"}.kpanel .ks.closed .kst{margin-bottom:0}.kpanel .ks.closed .ksn,.kpanel .ks.closed .kr{display:none}
   .kpanel .kall{font-size:.85em;color:#1f4e79;text-decoration:underline;cursor:pointer;margin-left:8px}
   .kpanel .kmin{right:30px;font-size:1.1rem}.kpanel.min .kb,.kpanel.min .kh .btns{display:none}.kpanel.min .kh{border-bottom:none;cursor:pointer}.kpanel.min .kmin::before{content:"\25BE"}.kpanel.min .kmin{font-size:.9rem}
+  .leaflet-popup-content{max-height:calc(100vh - 150px);overflow:auto;overscroll-behavior:contain}
 </style>
 </head>
 <body>
@@ -322,7 +323,7 @@ const distLayers={};DISTRICTS.slice().sort((x,y)=>distMi(x)-distMi(y)).forEach(d
  const list=lab.querySelector('.dlist');let sortBy='az';
  const render=()=>{const w=x=>x.rt==null?-1:(x.rc||0)<20?x.rt-10:x.rt;const rs=rows.slice().sort((x,y)=>sortBy==='rt'?((w(y)-w(x))||((y.rc||0)-(x.rc||0))||x.n.localeCompare(y.n)):x.n.localeCompare(y.n));
   list.innerHTML=rs.map(r=>`<a data-i="${rows.indexOf(r)}">${r.n}${r.rt!=null?` <span style="color:${(r.rc||0)<20?'#9e9e9e':'#5f5b50'}">${r.rt}</span>`:''}</a>`).join('')||'<span style="color:#5f5b50">Roster not yet loaded.</span>';
-  list.querySelectorAll('a').forEach(x=>x.onclick=()=>{const r=rows[+x.dataset.i];map.setView([r.lat,r.lng],17);(()=>{const pp=L.popup({maxWidth:300,autoPanPaddingTopLeft:[10,10],autoPanPaddingBottomRight:[10,60]}).setLatLng([r.lat,r.lng]).setContent(rcard(r));pp._rdata=r;pp.openOn(map);})();});
+  list.querySelectorAll('a').forEach(x=>x.onclick=()=>{const r=rows[+x.dataset.i];map.setView([r.lat,r.lng],17,{animate:false});(()=>{const pp=L.popup({maxWidth:300,keepInView:true,autoPanPaddingTopLeft:[10,10],autoPanPaddingBottomRight:[10,60]}).setLatLng([r.lat,r.lng]).setContent(rcard(r));pp._rdata=r;pp.openOn(map);})();});
   lab.querySelectorAll('[data-sort]').forEach(bn=>bn.style.fontWeight=bn.dataset.sort===sortBy?'700':'400');};
  DLIST_RENDER[d.n]=render;lab.querySelectorAll('[data-sort]').forEach(bn=>bn.onclick=()=>{sortBy=bn.dataset.sort;render();if(sortBy==='rt')liveDistrict(d.n);});render();
  lab.querySelector('input').onchange=e=>{e.target.checked?grp.addTo(distG):distG.removeLayer(grp);syncDist();};
@@ -351,7 +352,7 @@ function renderRoster(){const d=DISTRICTS.find(x=>x.n===rpDist);if(!d)return;con
  document.getElementById('rpTitle').textContent=d.n;const pg=LIVE_PROG[d.n];document.getElementById('rpSub').textContent=`${rows.length} restaurants, ${d.c}. ${rows.filter(r=>r.rt!=null).length} with a rating`+(pg&&pg.done<pg.total?`, loading live Google ratings (${pg.done} of ${pg.total})`:rows.some(r=>r._live)?', ratings live from Google'+(rows.filter(r=>r._miss).length?` (${rows.filter(r=>r._miss).length} not matched)`:''):'')+'. Tap one to see it on the map.';const em=rows.find(r=>r._err&&r._err.includes(':'));if(em&&!(pg&&pg.done<pg.total))document.getElementById('rpSub').textContent+=' Google says: '+em._err.split(':').slice(1).join(':').trim();const rb=document.getElementById('rpRetry');if(rb)rb.style.display=(rows.some(r=>r._miss)&&!(pg&&pg.done<pg.total))?'':'none';
  document.getElementById('rpList').innerHTML=rs.map(r=>`<a data-n="${encodeURIComponent(r.n)}"><span class="nm">${r.n}</span><span class="rt">${r.rt!=null?((r.rc||0)<20?'<span style="color:#9e9e9e">'+r.rt+'</span>':r.rt)+' <small>('+(r.rc!=null?r.rc.toLocaleString():'?')+')</small>':(r._miss==='nomatch'?'<small>no Google match</small>':r._miss==='error'?'<small title="'+(r._err||'').replace(/"/g,'')+'">lookup failed'+(r._err?' ('+r._err.replace('places ','').split(':')[0]+')':'')+'</small>':'<small>no rating</small>')}${r.p?' <small>'+r.p+'</small>':''}</span><span class="cu">${r.cu||''}</span></a>`).join('');
  document.querySelectorAll('#rpanel [data-rs]').forEach(b=>b.classList.toggle('on',b.dataset.rs===rpSort));
- document.querySelectorAll('#rpList a').forEach(a=>a.onclick=()=>{const r=rows.find(x=>x.n===decodeURIComponent(a.dataset.n));map.setView([r.lat,r.lng],17);(()=>{const pp=L.popup({maxWidth:300,autoPanPaddingTopLeft:[10,10],autoPanPaddingBottomRight:[10,60]}).setLatLng([r.lat,r.lng]).setContent(rosterCard(d,r));pp._rdata=r;pp.openOn(map);})();if(window.innerWidth<=700)rp.classList.remove('open');});}
+ document.querySelectorAll('#rpList a').forEach(a=>a.onclick=()=>{const r=rows.find(x=>x.n===decodeURIComponent(a.dataset.n));map.setView([r.lat,r.lng],17,{animate:false});(()=>{const pp=L.popup({maxWidth:300,keepInView:true,autoPanPaddingTopLeft:[10,10],autoPanPaddingBottomRight:[10,60]}).setLatLng([r.lat,r.lng]).setContent(rosterCard(d,r));pp._rdata=r;pp.openOn(map);})();if(window.innerWidth<=700)rp.classList.remove('open');});}
 let rpMode='rest',rpSSort='tier';window.openRoster=(n,mode)=>{rpDist=n;rpMode=mode||'rest';rp.classList.add('open');map.closePopup();document.getElementById('kpanel').classList.remove('open');renderRoster();liveDistrict(n);if(window.innerWidth<=700)panel.classList.remove('open');};
 document.getElementById('rpBack').onclick=()=>{rp.classList.remove('open');panel.classList.add('open');document.getElementById('pind').textContent='tap to hide';};
 document.getElementById('rpDistCard').onclick=()=>{const d=DISTRICTS.find(x=>x.n===rpDist);if(d&&d._grp){const pin=d._grp.getLayers().find(l=>l.getPopup&&l.getPopup()&&l instanceof L.Marker);if(pin){rp.classList.remove('open');pin.openPopup();}}};
@@ -506,6 +507,8 @@ function auditStamp(el){if(!el||el.querySelector('.astamp'))return;const d=docum
  d.innerHTML=`Link audit: ${AUDIT_DATE}. <a>What is this?</a><div class="ax">On the date shown, every link and figure on this card was checked by AI agents (Claude Sonnet, run by Anthropic's Claude), not by a person: each agent opened its share of the links to confirm it loads and points at the business or source named, each room count, rating or meeting figure was compared with the page it is cited to, and anything dead, wrong or out of date was reported and then fixed or removed. The audit is automated and can miss things a person would catch, so it is a check on links and figures, not an endorsement of any business. Links that could not be opened by automation (Instagram, Facebook, Yelp, Google Maps) were checked for correct form only. Ratings, prices and availability change daily, so treat figures as a dated snapshot and use the links for the live number.</div>`;
  d.querySelector('a').onclick=e=>{e.preventDefault();d.classList.toggle('open');};el.appendChild(d);}
 map.on('popupopen',e=>{const el=e.popup.getElement()&&e.popup.getElement().querySelector('.leaflet-popup-content');auditStamp(el);});
+/* keep cards on screen: re-run the popup's auto-pan whenever live data or photos change its height */
+map.on('popupopen',e=>{const el=e.popup.getElement();if(!el)return;let t;const fix=()=>{clearTimeout(t);t=setTimeout(()=>{try{e.popup.update();}catch(_){}},80);};const ob=new MutationObserver(()=>{fix();el.querySelectorAll('img').forEach(i=>{if(!i._kv){i._kv=1;i.addEventListener('load',fix);}});});ob.observe(el,{childList:true,subtree:true,attributes:true});el.querySelectorAll('img').forEach(i=>{i._kv=1;i.addEventListener('load',fix);});fix();e.popup.once('remove',()=>{ob.disconnect();clearTimeout(t);});});
 </script>
 </body>
 </html>
