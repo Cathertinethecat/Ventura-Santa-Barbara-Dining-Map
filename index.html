@@ -10,11 +10,11 @@
 <script src="https://unpkg.com/leaflet.gridlayer.googlemutant@0.14.1/dist/Leaflet.GoogleMutant.js"></script>
 <script>const GKEY="AIzaSyBv-3fjCEu5UzXlyiA2OGjzyUl3tprLpxY";window.gmReady=function(){window._gmLoaded=true;if(window.onGoogleReady)window.onGoogleReady();};</script>
 <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBv-3fjCEu5UzXlyiA2OGjzyUl3tprLpxY&loading=async&callback=gmReady&v=weekly"></script>
-<script src="district_stores.js?v=1792471375"></script>
-<script src="district_restaurants.js?v=1792471375"></script>
-<script src="districts.js?v=1792471375"></script>
-<script src="restaurants.js?v=1792471375"></script>
-<script src="la_transit.js?v=1792471375"></script>
+<script src="district_stores.js?v=1792471571"></script>
+<script src="district_restaurants.js?v=1792471571"></script>
+<script src="districts.js?v=1792471571"></script>
+<script src="restaurants.js?v=1792471571"></script>
+<script src="la_transit.js?v=1792471571"></script>
 <style>
   html,body{height:100%;margin:0;font-family:"Times New Roman",Times,serif;color:#1d1c19;background:#111}
   #map{position:absolute;inset:0}
@@ -420,7 +420,7 @@ document.getElementById('onExpand').onclick=()=>{if(ocState['Oxnard'])ocState['O
 document.getElementById('onCollapse').onclick=()=>{if(ocState['Oxnard'])ocState['Oxnard'].expanded=false;refreshCity('Oxnard');};
 tierCbs.forEach(cb=>cb.checked=false);syncAll();ocCityCbs.forEach(cb=>cb.checked=false);syncOc();
 applyRating();
-map.fitBounds([[33.925,-117.683],[34.095,-117.52]]);
+map.fitBounds([[34.13,-119.30],[34.30,-119.10]]);
 /* collapsible legend sections */
 function makeSection(masterId){const m=document.getElementById(masterId);if(!m)return;const head=m.closest('label');const box=head.parentNode;head.classList.add('sechead');
  const wrap=document.createElement('div');wrap.className='grp';let n=head.nextSibling;while(n){const nx=n.nextSibling;if(n.nodeType===1||(n.nodeType===3&&n.textContent.trim()))wrap.appendChild(n);n=nx;}box.appendChild(wrap);
